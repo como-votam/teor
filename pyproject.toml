@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "comovotam-teor"
+version = "1.0.0"
+description = "Benchmark aberto do processo legislativo brasileiro"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+authors = [{ name = "Como Votam" }]
+dependencies = ["pydantic>=2.10,<3", "httpx>=0.28,<1", "pyarrow>=19", "duckdb>=1.2,<2", "typer>=0.16,<1", "numpy>=2", "beautifulsoup4>=4.13", "pypdf>=5", "fonttools>=4.60", "fastapi>=0.115", "uvicorn>=0.34", "rank-bm25>=0.2"]
+
+[project.optional-dependencies]
+eval = ["inspect-ai>=0.3.200"]
+openai = ["openai>=1.100"]
+anthropic = ["anthropic>=0.60"]
+google = ["google-genai>=1.30"]
+vertex = ["google-cloud-aiplatform>=1.100", "google-cloud-storage>=3", "google-cloud-bigquery>=3"]
+bedrock = ["boto3>=1.40"]
+azure = ["openai>=1.100", "azure-identity>=1.20"]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-cov>=6", "ruff>=0.12", "mypy>=1.16", "nbclient>=0.10", "nbformat>=5", "ipykernel>=6", "types-beautifulsoup4"]
+
+[project.scripts]
+teor = "teor.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["teor"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"config" = "teor/resources/config"
+"docs/dataset-card.md" = "teor/resources/dataset-card.md"
+"site/public/review-local.html" = "teor/resources/review-local.html"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
