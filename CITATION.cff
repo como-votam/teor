@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "Cite a versão do protocolo e do conjunto usada na avaliação."
+title: "Teor: benchmark aberto do processo legislativo brasileiro"
+type: software
+version: 1.0.0
+license: Apache-2.0
+repository-code: https://github.com/como-votam/teor
+url: https://teor.comovotam.com.br
+authors:
+  - name: Como Votam
