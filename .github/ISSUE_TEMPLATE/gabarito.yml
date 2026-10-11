@@ -1,0 +1,16 @@
+name: Erro de gabarito
+description: Informe o item e a evidência oficial
+body:
+  - type: input
+    id: item
+    attributes:
+      label: ID do item e versão do conjunto
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Fonte oficial e motivo da correção
+      description: Não publique gabaritos de rodadas abertas.
+    validations:
+      required: true

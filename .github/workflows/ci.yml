@@ -1,0 +1,76 @@
+name: Validação
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --all-extras --group dev
+      - run: uv run ruff check teor tests scripts
+      - run: uv run ruff format --check teor tests scripts
+      - run: uv run mypy teor
+      - run: uv run pytest --cov=teor --cov-report=term-missing
+      - run: uv run python scripts/check_schemas.py
+      - run: uv run python scripts/run_notebooks.py
+      - run: uv run python scripts/validate_results.py
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --all-extras --group dev
+      - run: uv run pytest -q
+  site:
+    runs-on: ubuntu-latest
+    env:
+      ASTRO_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --group dev
+      - run: uv run python scripts/test_site_data.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - working-directory: site
+        run: npm ci
+      - working-directory: site
+        run: npm audit --audit-level=high
+      - working-directory: site
+        run: npm run test
+      - working-directory: site
+        run: npm run build
+      - working-directory: site
+        run: npx playwright install --with-deps chromium
+      - working-directory: site
+        run: npm run test:e2e
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/check_secrets.py
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --group dev
+      - run: uv run python scripts/test_site_data.py
+      - run: docker build -t teor-api .
+      - run: |
+          docker run -d --name teor-api -p 8000:8000 -v "$PWD/data/ci-snapshot:/snapshot:ro" teor-api
+          for attempt in $(seq 1 30); do
+            curl --fail http://localhost:8000/health && exit 0
+            sleep 1
+          done
+          docker logs teor-api
+          exit 1

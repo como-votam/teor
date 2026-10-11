@@ -1,0 +1,13 @@
+name: Propor tarefa
+description: Nova pergunta factual ou melhoria de cobertura
+body:
+  - type: textarea
+    id: task
+    attributes:
+      label: Pergunta, gabarito e fonte verificável
+    validations:
+      required: true
+  - type: textarea
+    id: limits
+    attributes:
+      label: Corte temporal, ambiguidades e limitações
