@@ -1,0 +1,33 @@
+{
+  "name": "teor-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.29.0",
+    "@fontsource/newsreader": "^5.2.0",
+    "@fontsource/public-sans": "^5.2.0",
+    "@fontsource/space-mono": "^5.2.0",
+    "astro": "^7.3.8"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@axe-core/playwright": "^4.10.0",
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^26.6.5",
+    "prettier": "^3.9.9",
+    "prettier-plugin-astro": "^1.1.1",
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.3"
+  }
+}

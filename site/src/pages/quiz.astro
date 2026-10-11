@@ -1,0 +1,139 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { data } from '../data';
+---
+
+<Layout title="Teste você">
+  <p class="eyebrow">DEZ PERGUNTAS · SEM GUARDAR RESPOSTAS</p>
+  <h1>
+    Como você
+    <br />
+    se sairia?
+  </h1>
+  <p>
+    Responda usando o contexto. Conjuntos de respostas devem ser separados por ponto e vírgula. A
+    comparação com modelos só aparece quando eles responderam aos mesmos itens.
+  </p>
+  <div id="quiz" class="empty">
+    <p id="quiz-progress"></p>
+    <p id="quiz-question" class="question"></p>
+    <pre id="quiz-context"></pre>
+    <label for="quiz-answer">Sua resposta</label>
+    <input id="quiz-answer" autocomplete="off" />
+    <button id="quiz-submit" type="button">
+      Conferir resposta
+    </button>
+    <div id="quiz-feedback" role="status"></div>
+    <button id="quiz-next" hidden type="button">
+      Próxima pergunta
+    </button>
+  </div>
+  <script
+    type="application/json"
+    id="quiz-data"
+    set:html={JSON.stringify({ quiz: data.quiz, predictions: data.predictions }).replaceAll(
+      '<',
+      '\u003c',
+    )}
+  />
+</Layout>
+<script>
+  import { quizScore } from '../lib/quiz';
+  import type { Item } from '../data';
+  const payload = JSON.parse(document.getElementById('quiz-data')!.textContent!);
+  const items = payload.quiz as Item[];
+  let index = 0;
+  let points = 0;
+  const answer = document.getElementById('quiz-answer') as HTMLInputElement;
+  const submit = document.getElementById('quiz-submit') as HTMLButtonElement;
+  const next = document.getElementById('quiz-next') as HTMLButtonElement;
+  const feedback = document.getElementById('quiz-feedback')!;
+  function show() {
+    if (!items.length) {
+      document.getElementById('quiz')!.textContent =
+        'O quiz ficará disponível após exportar um conjunto público.';
+      return;
+    }
+    const item = items[index];
+    document.getElementById('quiz-progress')!.textContent = `${index + 1} de ${items.length}`;
+    document.getElementById('quiz-question')!.textContent = item.prompts[0];
+    document.getElementById('quiz-context')!.textContent = JSON.stringify(item.context, null, 2);
+    answer.value = '';
+    answer.disabled = false;
+    submit.disabled = false;
+    next.hidden = true;
+    feedback.textContent = '';
+  }
+  submit.addEventListener('click', () => {
+    const item = items[index];
+    const score = quizScore(item.answer.type, item.answer.value, answer.value);
+    points += score;
+    feedback.textContent = `${score === 1 ? 'Resposta correta.' : score > 0 ? 'Resposta parcialmente correta.' : 'Resposta diferente do gabarito.'} Gabarito: ${JSON.stringify(item.answer.value)}.`;
+    for (const evidence of item.evidence) {
+      const a = document.createElement('a');
+      a.href = evidence.url;
+      a.textContent = ' Fonte oficial';
+      feedback.append(a);
+    }
+    answer.disabled = true;
+    submit.disabled = true;
+    next.hidden = false;
+  });
+  next.addEventListener('click', () => {
+    index++;
+    if (index < items.length) {
+      show();
+      answer.focus();
+      return;
+    }
+    const container = document.getElementById('quiz')!;
+    container.replaceChildren();
+    container.setAttribute('role', 'status');
+    container.tabIndex = -1;
+    container.focus();
+    const p = document.createElement('p');
+    p.textContent = `Você obteve ${points.toFixed(1)} de ${items.length} pontos.`;
+    container.append(p);
+    const runs = [
+      ...new Set<string>(
+        payload.predictions.map((p: { model: string; run_id: string }) =>
+          JSON.stringify([p.model, p.run_id]),
+        ),
+      ),
+    ];
+    let comparisons = 0;
+    for (const identity of runs) {
+      const [model, runId] = JSON.parse(identity) as string[];
+      const rows = payload.predictions.filter(
+        (p: { model: string; run_id: string; variant: number }) =>
+          p.model === model && p.run_id === runId && p.variant === 0,
+      );
+      const matching = items.map((item) =>
+        rows.find((p: { item_id: string }) => p.item_id === item.id),
+      );
+      if (matching.some((p) => !p)) continue;
+      const total = matching.reduce(
+        (sum, p, n) =>
+          sum +
+          (p.status === 'ok' && !p.abstain
+            ? quizScore(
+                items[n].answer.type,
+                items[n].answer.value,
+                Array.isArray(p.response) ? p.response.join(';') : String(p.response),
+              )
+            : 0),
+        0,
+      );
+      const comparison = document.createElement('p');
+      comparison.textContent = `${model}: ${total.toFixed(1)} de ${items.length} pontos nos mesmos itens, variante 1.`;
+      container.append(comparison);
+      comparisons++;
+    }
+    if (!comparisons) {
+      const empty = document.createElement('p');
+      empty.textContent = 'Nenhuma comparação com modelos disponível para este lote.';
+      container.append(empty);
+    }
+  });
+  show();
+</script>

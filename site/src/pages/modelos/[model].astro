@@ -1,0 +1,93 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { data, slug, taskNames, modeNames, chamberNames } from '../../data';
+export function getStaticPaths() {
+  return [...new Set(data.results.map((r) => r.model))].map((model) => ({
+    params: { model: slug(model) },
+    props: { model },
+  }));
+}
+const { model } = Astro.props;
+const results = data.results.filter((r) => r.model === model);
+---
+
+<Layout title={model}>
+  <p class="eyebrow">PERFIL DO MODELO</p>
+  <h1>{model}</h1>
+  <p>
+    Notas de tarefas diferentes não são somadas. Compare somente execuções com o mesmo conjunto e
+    protocolo.
+  </p>
+  {results.map((result) => (
+    <section>
+      <h2>
+        Execução de{' '}
+        {new Date(result.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
+      </h2>
+      <p>
+        <span class="badge">{result.verification}</span> · cobertura{' '}
+        {(result.usage.coverage * 100).toFixed(1)}% · custo{' '}
+        {result.usage.cost_usd === null
+          ? 'não informado'
+          : `US$ ${result.usage.cost_usd.toFixed(4)}`}{' '}
+        · latência{' '}
+        {result.usage.latency_mean_seconds === null
+          ? 'não informada'
+          : `${result.usage.latency_mean_seconds.toFixed(2)} s`}
+      </p>
+      <div class="table-wrap" tabindex="0" role="region" aria-label="Métricas por tarefa">
+        <table>
+          <thead>
+            <tr>
+              <th>Trilha</th>
+              <th>Tarefa</th>
+              <th>Casa / modo</th>
+              <th>Resultado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {result.metrics.map((m) => (
+              <tr>
+                <td>{m.track}</td>
+                <td>{taskNames[m.task] || m.task}</td>
+                <td>
+                  {chamberNames[m.chamber || ''] || m.chamber} / {modeNames[m.mode || ''] || m.mode}
+                </td>
+                <td>
+                  {m.score
+                    ? `${(m.score.mean * 100).toFixed(1)}% (${m.score.ci95.map((n) => (n * 100).toFixed(1)).join('–')}%)`
+                    : m.mean !== undefined
+                      ? `${m.first} − ${m.second}: ${(m.mean * 100).toFixed(1)} pontos percentuais (${m.ci95?.map((n) => (n * 100).toFixed(1)).join('–')})`
+                      : m.semantic_fidelity || 'Métrica específica'}
+                  {m.brier && ` · Brier ${m.brier.mean.toFixed(3)}`}
+                  {m.citation_validity &&
+                    ` · trechos localizados ${(m.citation_validity.mean * 100).toFixed(1)}%`}
+                  {m.human_fidelity &&
+                    ` · fidelidade humana ${(m.human_fidelity.mean * 100).toFixed(1)}%`}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <details>
+        <summary>Protocolo e parâmetros</summary>
+        <pre>{JSON.stringify({dataset:result.dataset_hash,protocol:result.protocol_hash,config:result.config},null,2)}</pre>
+      </details>
+      {(data.examples || [])
+        .filter((e) => e.model === model && e.run_id === result.id)
+        .map((example) => (
+          <details>
+            <summary>
+              {example.score === 1 ? 'Exemplo de acerto' : 'Exemplo de erro'} · {example.item.track}
+            </summary>
+            <p>{example.item.prompts[0]}</p>
+            <pre>{JSON.stringify({context:example.item.context,response:example.response,answer:example.item.answer.value},null,2)}</pre>
+            {example.item.evidence.map((e) => (
+              <a href={e.url}>Fonte oficial ↗</a>
+            ))}
+          </details>
+        ))}
+    </section>
+  ))}
+</Layout>

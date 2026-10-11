@@ -1,0 +1,25 @@
+---
+import Layout from '../layouts/Layout.astro';
+import type { MarkdownInstance } from 'astro';
+const docs = import.meta.glob<MarkdownInstance<Record<string, unknown>>>('../../../docs/*.md', {
+  eager: true,
+});
+export function getStaticPaths() {
+  const pages = [
+    ['metodologia', 'metodologia', 'Metodologia'],
+    ['dados', 'dataset-card', 'Dados e fontes'],
+    ['erratas', 'erratas', 'Erratas'],
+    ['contribuir', 'contribuir', 'Como contribuir'],
+    ['revisar', 'revisar', 'Revisar itens'],
+  ];
+  return pages.map(([page, file, title]) => ({ params: { page }, props: { file, title } }));
+}
+const { file, title } = Astro.props;
+const { Content } = docs[`../../../docs/${file}.md`];
+---
+
+<Layout title={title}>
+  <article class="prose">
+    <Content />
+  </article>
+</Layout>

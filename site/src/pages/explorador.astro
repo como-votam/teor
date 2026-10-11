@@ -1,0 +1,46 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { data, tracks } from '../data';
+---
+
+<Layout title="Explorar itens">
+  <p class="eyebrow">DADOS E GABARITOS PÚBLICOS</p>
+  <h1>
+    Cada pergunta,
+    <br />
+    com sua fonte.
+  </h1>
+  <p>Busque os itens disponíveis. O explorador consulta os arquivos no navegador.</p>
+  <div class="filters">
+    <label>
+      Texto
+      <input id="search" type="search" placeholder="Buscar pergunta" />
+    </label>
+    <label>
+      Trilha
+      <select id="explorer-track">
+        <option value="">Todas</option>
+        {tracks.map(([id, name]) => (
+          <option value={id}>
+            {id} · {name}
+          </option>
+        ))}
+      </select>
+    </label>
+    <button id="load" type="button">
+      Carregar próxima partição
+    </button>
+  </div>
+  <p id="explorer-status" role="status">
+    {data.count
+      ? `${data.count} itens disponíveis; carregamento sob demanda.`
+      : 'Nenhum conjunto público exportado.'}
+  </p>
+  <div id="items"></div>
+  <script
+    type="application/json"
+    id="partitions"
+    set:html={JSON.stringify(data.partitions).replaceAll('<', '\u003c')}
+  />
+</Layout>
+<script src="../scripts/explorer.ts"></script>

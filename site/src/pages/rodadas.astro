@@ -1,0 +1,46 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { data } from '../data';
+---
+
+<Layout title="Rodadas Live">
+  <p class="eyebrow">LOTES NOVOS · DIVULGAÇÃO APÓS FECHAMENTO</p>
+  <h1>
+    O benchmark
+    <br />
+    também muda.
+  </h1>
+  <p>
+    Rodadas congelam um lote, recebem previsões até o prazo e divulgam o gabarito após o fechamento.
+    Não presumimos conhecer o corte de treinamento de cada modelo.
+  </p>
+  {data.rounds.length ? (
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Rodada</th>
+            <th>Abertura</th>
+            <th>Fechamento</th>
+            <th>Divulgação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.rounds.map((r) => (
+            <tr>
+              <td>{r.id}</td>
+              <td>{r.opens_at}</td>
+              <td>{r.closes_at}</td>
+              <td>{r.published_at}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  ) : (
+    <div class="empty">
+      <h2>Nenhuma rodada publicada</h2>
+      <p>As datas e os resultados aparecem aqui quando uma rodada for concluída e divulgada.</p>
+    </div>
+  )}
+</Layout>

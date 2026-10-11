@@ -1,0 +1,77 @@
+---
+import '@fontsource/public-sans/400.css';
+import '@fontsource/public-sans/600.css';
+import '@fontsource/newsreader/500.css';
+import '@fontsource/space-mono/400.css';
+import '../styles/global.css';
+const { title, description = 'Benchmark aberto de LLMs para o processo legislativo brasileiro.' } =
+  Astro.props;
+const base = import.meta.env.BASE_URL;
+const links = [
+  ['', 'Leaderboard'],
+  ['explorador/', 'Itens'],
+  ['quiz/', 'Teste você'],
+  ['analises/', 'Análises'],
+  ['rodadas/', 'Rodadas'],
+  ['metodologia/', 'Metodologia'],
+];
+const umami = import.meta.env.PUBLIC_UMAMI_URL;
+const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title} · Teor</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+    <meta property="og:title" content={`${title} · Teor`} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta name="theme-color" content="#1b6d24" />
+    <link rel="icon" type="image/svg+xml" href={`${base}logo.svg`} />
+    {umami && umamiId && <script is:inline defer src={umami} data-website-id={umamiId}></script>}
+  </head>
+  <body>
+    <a class="skip" href="#conteudo">
+      Ir para o conteúdo
+    </a>
+    <header>
+      <a class="wordmark" href={base}>
+        teor<span>por Como Votam</span>
+      </a>
+      <nav aria-label="Principal">
+        {links.map(([href, label]) => (
+          <a
+            href={`${base}${href}`}
+            aria-current={Astro.url.pathname === `${base}${href}` ? 'page' : undefined}
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
+      <a class="repo" href="https://github.com/como-votam/teor">
+        Código ↗
+      </a>
+    </header>
+    <main id="conteudo">
+      <slot />
+    </main>
+    <footer>
+      <div>
+        <img src={`${base}logo.svg`} width="24" height="28" alt="" /> <strong>Teor</strong> por{' '}
+        <a href="https://comovotam.com.br">Como Votam</a>
+      </div>
+      <nav aria-label="Informações">
+        <a href={`${base}dados/`}>Dados</a>
+        <a href={`${base}erratas/`}>Erratas</a>
+        <a href={`${base}contribuir/`}>Contribuir</a>
+        <a href={`${base}revisar/`}>Revisar itens</a>
+      </nav>
+      <p>Dados oficiais. Métricas abertas. Cada afirmação com sua evidência.</p>
+    </footer>
+  </body>
+</html>

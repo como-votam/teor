@@ -1,0 +1,211 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { data, tracks, slug, taskNames, modeNames, chamberNames } from '../data';
+const base = import.meta.env.BASE_URL;
+const cohorts = [...new Set(data.results.map((r) => `${r.dataset_hash}:${r.protocol_hash}`))];
+---
+
+<Layout title="A IA entende o Congresso?">
+  <section class="hero">
+    <div>
+      <p class="eyebrow">BENCHMARK ABERTO · CÂMARA E SENADO</p>
+      <h1>
+        A IA entende
+        <br />o Congresso?
+      </h1>
+      <p class="lead">
+        Compare o que modelos de linguagem conseguem responder sobre textos, regras e votações do
+        Legislativo brasileiro.
+      </p>
+    </div>
+    <aside>
+      Oito trilhas. Nenhuma nota única.
+      <br />
+      <br />
+      Compreender um texto, prever um voto e consultar uma fonte são capacidades diferentes.
+    </aside>
+  </section>
+  <h2>Compare por trilha</h2>
+  {data.results.length > 0 && data.results.every((r) => r.model.startsWith('baseline/')) && (
+    <p class="notice">
+      Os resultados disponíveis são baselines determinísticos. Ainda não há avaliações de modelos de
+      linguagem.
+    </p>
+  )}
+  <div class="filters">
+    <label>
+      Trilha
+      <select id="track">
+        <option value="">Todas</option>
+        {tracks.map(([id, name]) => (
+          <option value={id}>
+            {id} · {name}
+          </option>
+        ))}
+      </select>
+    </label>
+    <label>
+      Casa
+      <select id="chamber">
+        <option value="">Todas</option>
+        <option value="camara">Câmara</option>
+        <option value="senado">Senado</option>
+      </select>
+    </label>
+    <label>
+      Modo
+      <select id="mode">
+        <option value="">Todos</option>
+        <option value="with_context">Com contexto</option>
+        <option value="closed_book">Sem contexto</option>
+        <option value="tools">Com ferramentas</option>
+      </select>
+    </label>
+    <label>
+      Modelo
+      <select id="weights">
+        <option value="">Todos</option>
+        <option value="open">Pesos abertos</option>
+        <option value="closed">Pesos fechados</option>
+        <option value="brazilian">Brasileiro</option>
+      </select>
+    </label>
+    <label>
+      Desde
+      <input id="since" type="date" />
+    </label>
+    <label>
+      Protocolo e conjunto
+      <select id="cohort">
+        <option value="">Selecionar</option>
+        {cohorts.map((c) => (
+          <option value={c}>{c.slice(0, 12)}…</option>
+        ))}
+      </select>
+    </label>
+  </div>
+  {data.results.length === 0 ? (
+    <div class="empty">
+      <h2>Avaliações ainda não publicadas</h2>
+      <p>
+        O benchmark está preparado para receber resultados. As primeiras notas aparecerão aqui
+        depois de uma execução documentada.
+      </p>
+      <a class="button" href={`${base}contribuir/`}>
+        Como submeter um resultado
+      </a>
+    </div>
+  ) : (
+    <div class="table-wrap" tabindex="0" role="region" aria-label="Comparação por trilha">
+      <table id="leaderboard">
+        <caption class="mono">Resultados por tarefa; compare o mesmo protocolo e conjunto.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Modelo</th>
+            <th scope="col">Trilha / tarefa</th>
+            <th scope="col">Casa / modo</th>
+            <th scope="col">Nota e IC 95%</th>
+            <th scope="col">Cobertura</th>
+            <th scope="col">Verificação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.results.flatMap((r) =>
+            r.metrics
+              .filter((m) => m.score && m.category !== 'experimental')
+              .map((m) => (
+                <tr
+                  data-track={m.track}
+                  data-chamber={m.chamber}
+                  data-mode={m.mode}
+                  data-cohort={`${r.dataset_hash}:${r.protocol_hash}`}
+                  data-open={String(r.config.open_weights ?? '')}
+                  data-brazilian={String(r.config.brazilian ?? '')}
+                  data-date={r.created_at.slice(0, 10)}
+                >
+                  <td>
+                    <a href={`${base}modelos/${slug(r.model)}/`}>{r.model}</a>
+                  </td>
+                  <td>
+                    {m.track} · {taskNames[m.task] || m.task}
+                    <br />
+                    <small>
+                      {m.split}
+                      {m.temporal_quality === 'retrospective' && ' · retrospectivo'}
+                    </small>
+                  </td>
+                  <td>
+                    {chamberNames[m.chamber || ''] || m.chamber}
+                    <br />
+                    <small>{modeNames[m.mode || ''] || m.mode}</small>
+                  </td>
+                  <td>
+                    {(m.score!.mean * 100).toFixed(1)}%<br />
+                    <small>{m.score!.ci95.map((n) => (n * 100).toFixed(1)).join('–')}%</small>
+                  </td>
+                  <td>
+                    {(r.usage.coverage * 100).toFixed(1)}%{!r.complete && ' · incompleto'}
+                  </td>
+                  <td>
+                    <span class="badge">{r.verification}</span>
+                  </td>
+                </tr>
+              )),
+          )}
+        </tbody>
+      </table>
+    </div>
+  )}
+  <p id="filter-status" role="status"></p>
+  <h2>O que cada trilha mede</h2>
+  <div class="track-grid">
+    {tracks.map(([id, name, description]) => (
+      <article class="track">
+        <span>{id}</span>
+        <h3>{name}</h3>
+        <p>{description}</p>
+      </article>
+    ))}
+  </div>
+  <p>
+    <a href={`${base}metodologia/`}>Leia o protocolo antes de interpretar as notas →</a>
+  </p>
+</Layout>
+<script>
+  const ids = ['track', 'chamber', 'mode', 'weights', 'since', 'cohort'];
+  function filter() {
+    const cohort = document.getElementById('cohort') as HTMLSelectElement;
+    if (!cohort.value && cohort.options.length > 1) cohort.selectedIndex = 1;
+    const values = Object.fromEntries(
+      ids.map((id) => [
+        id,
+        (document.getElementById(id) as HTMLInputElement | HTMLSelectElement).value,
+      ]),
+    );
+    let visible = 0;
+    document.querySelectorAll<HTMLTableRowElement>('#leaderboard tbody tr').forEach((row) => {
+      const d = row.dataset;
+      const show =
+        (!values.track || values.track === d.track) &&
+        (!values.chamber || values.chamber === d.chamber) &&
+        (!values.mode || values.mode === d.mode) &&
+        (!values.cohort || values.cohort === d.cohort) &&
+        (!values.since || String(d.date) >= values.since) &&
+        (!values.weights ||
+          (values.weights === 'open' && d.open === 'true') ||
+          (values.weights === 'closed' && d.open === 'false') ||
+          (values.weights === 'brazilian' && d.brazilian === 'true'));
+      row.hidden = !show;
+      if (show) visible++;
+    });
+    document.getElementById('filter-status')!.textContent = visible
+      ? `${visible} resultados exibidos.`
+      : '';
+  }
+  ids.forEach((id) => document.getElementById(id)?.addEventListener('change', filter));
+  const cohort = document.getElementById('cohort') as HTMLSelectElement;
+  if (cohort.options.length > 1) {
+    cohort.selectedIndex = 1;
+    filter();
+  }
+</script>
