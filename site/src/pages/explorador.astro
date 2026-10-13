@@ -1,11 +1,13 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Breadcrumbs from '../components/seo/Breadcrumbs.astro';
 import Icon from '../components/Icon.astro';
 import { data, tracks } from '../data';
 const base = import.meta.env.BASE_URL;
 ---
 
 <Layout title="Explorar itens">
+  <Breadcrumbs />
   <div class="page-intro">
     <p class="eyebrow">Dados e gabaritos públicos</p>
     <h1>

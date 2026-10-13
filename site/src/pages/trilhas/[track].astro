@@ -1,0 +1,44 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Breadcrumbs from '../../components/seo/Breadcrumbs.astro';
+import { tracks } from '../../data';
+import { trackDetails } from '../../lib/seo/content';
+import { urls } from '../../lib/seo/config';
+export function getStaticPaths() {
+  return tracks.map(([id, name, description]) => ({
+    params: { track: id.toLowerCase() },
+    props: { id, name, description },
+  }));
+}
+const { id, name, description } = Astro.props;
+const details = trackDetails[id];
+---
+
+<Layout title={`Trilha ${id}: ${name}`}>
+  <Breadcrumbs />
+  <article class="prose">
+    <p class="eyebrow">Trilha {id} / Benchmark legislativo</p>
+    <h1>{name}</h1>
+    <p>{description}</p>
+    <h2>Pergunta de avaliação</h2>
+    <p>{details.question}</p>
+    <h2>Como é medida</h2>
+    <p>{details.method}</p>
+    <h2>Limites de interpretação</h2>
+    <p>{details.limitation}</p>
+    <p>
+      A comparação exige a mesma tarefa, casa, modo, divisão, qualidade temporal, conjunto e
+      protocolo. O resultado desta trilha não é somado às outras capacidades.
+    </p>
+    <p>
+      <a href={urls.path(`?track=${id}&task=&chamber=&mode=&split=&temporal=`)}>
+        Consultar resultados da trilha
+      </a>{' '}
+      · <a href={urls.path(`explorador/?track=${id}`)}>Explorar itens</a> ·{' '}
+      <a href={urls.path('metodologia/')}>Ler o protocolo completo</a>
+    </p>
+    <p>
+      <a href={urls.path('trilhas/')}>Voltar às oito trilhas →</a>
+    </p>
+  </article>
+</Layout>

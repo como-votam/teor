@@ -1,44 +1,13 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import Breadcrumbs from '../../components/seo/Breadcrumbs.astro';
+import { Content } from '../../../../docs/interpretacao.md';
 ---
 
 <Layout title="Interpretar uma nota">
+  <Breadcrumbs />
   <article class="prose">
-    <p class="eyebrow">METODOLOGIA EM PRÁTICA</p>
-    <h1>
-      Uma nota responde
-      <br />a uma pergunta.
-    </h1>
-    <p>
-      Um modelo pode contar votos corretamente e errar uma regra constitucional. Somar esses
-      resultados esconde a diferença que interessa a quem vai usá-lo.
-    </p>
-    <h2>Contexto muda o experimento</h2>
-    <p>
-      Com o registro no prompt, medimos compreensão. Sem o registro, observamos conhecimento e
-      memorização. Com ferramentas, avaliamos também a busca. Compare execuções do mesmo modo.
-    </p>
-    <h2>Incerteza acompanha a nota</h2>
-    <p>
-      Variantes do mesmo fato não são exemplos independentes. O bootstrap agrupa proposições
-      relacionadas e votações antes de calcular intervalos. Conjuntos com poucas famílias podem
-      produzir intervalos pouco informativos.
-    </p>
-    <h2>Previsão exige evidência temporal</h2>
-    <p>
-      Uma API consultada hoje pode mostrar informações que não existiam antes da votação. Retirar o
-      placar é necessário, mas não basta para provar uma previsão prospectiva. O Teor registra essa
-      limitação.
-    </p>
-    <h2>Uma citação pode existir e não sustentar a afirmação</h2>
-    <p>
-      A verificação automática localiza o trecho. Dois revisores independentes avaliam se ele
-      sustenta a afirmação. Sem revisão, a fidelidade semântica permanece sem nota.
-    </p>
-    <p>
-      <a href="https://github.com/como-votam/teor/tree/main/analyses">
-        Reproduzir as análises nos notebooks ↗
-      </a>
-    </p>
+    <p class="eyebrow">Metodologia em prática</p>
+    <Content />
   </article>
 </Layout>

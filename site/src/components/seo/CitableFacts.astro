@@ -1,0 +1,24 @@
+---
+import { overview } from '../../lib/seo/registry';
+import { urls } from '../../lib/seo/config';
+---
+
+<aside class="status citable-facts" data-citable aria-labelledby="citable-title">
+  <h2 id="citable-title">O benchmark em dados</h2>
+  <p>{overview.summary}</p>
+  <dl>
+    {overview.facts.map((f) => (
+      <div>
+        <dt>{f.label}</dt>
+        <dd>
+          {f.value.toLocaleString('pt-BR')} {f.unit}
+        </dd>
+      </div>
+    ))}
+  </dl>
+  <p class="citable-source">
+    Escopo: artefatos públicos disponíveis nesta publicação.{' '}
+    <a href={urls.path('dados/')}>Fontes e condições de reuso</a> ·{' '}
+    <a href={urls.path('como-citar/')}>Como citar</a>
+  </p>
+</aside>

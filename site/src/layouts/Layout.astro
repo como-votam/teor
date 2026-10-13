@@ -5,11 +5,23 @@ import '@fontsource/newsreader/500.css';
 import '@fontsource/space-mono/400.css';
 import '../styles/global.css';
 import Icon from '../components/Icon.astro';
-const {
-  title,
-  description = 'Benchmark aberto de modelos de linguagem sobre textos, regras e votações do Legislativo brasileiro. Compare tarefas, consulte fontes e teste suas respostas.',
-} = Astro.props;
-const base = import.meta.env.BASE_URL;
+import { urls, indexable, serializeJson } from '../lib/seo/config';
+import { findPage, markdownPath, imagePath } from '../lib/seo/registry';
+import { schemaGraph } from '../lib/seo/schema';
+const { title: fallbackTitle, description: fallbackDescription } = Astro.props;
+const page = findPage(Astro.url.pathname);
+const title = page?.title || `${fallbackTitle || 'Página não encontrada'} · Teor`;
+const description =
+  page?.description ||
+  fallbackDescription ||
+  'Página não encontrada no Teor. Consulte resultados, perguntas e metodologia do benchmark legislativo.';
+const canonical = page ? urls.absolute(page.path) : new URL(Astro.url.pathname, urls.origin).href;
+const image = urls.absolute(page ? imagePath(page) : 'og/teor.png');
+const robots =
+  page?.index && indexable
+    ? 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
+    : 'noindex, follow';
+const base = urls.base;
 const links = [
   ['', 'Comparar'],
   ['explorador/', 'Explorar itens'],
@@ -27,18 +39,71 @@ const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
-    <title>{title} · Teor</title>
+    <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
-    <meta property="og:title" content={`${title} · Teor`} />
+    <meta name="robots" content={robots} />
+    <meta name="author" content="Como Votam" />
+    {import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION && (
+      <meta
+        name="google-site-verification"
+        content={import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION}
+      />
+    )}
+    {import.meta.env.PUBLIC_BING_SITE_VERIFICATION && (
+      <meta name="msvalidate.01" content={import.meta.env.PUBLIC_BING_SITE_VERIFICATION} />
+    )}
+
+    <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={page?.article ? 'article' : 'website'} />
     <meta property="og:locale" content="pt_BR" />
-    <meta property="og:image" content={new URL(`${base}og.png`, Astro.site)} />
-    <meta property="og:image:alt" content="Como Votam, o retrato legislativo brasileiro" />
+    <meta property="og:site_name" content="Teor" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={image} />
+    <meta property="og:image:secure_url" content={image.startsWith('https:') ? image : undefined} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content={
+        page
+          ? `${page.name} — Teor, por Como Votam`
+          : 'Teor — benchmark legislativo, por Como Votam'
+      }
+    />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={image} />
+    <meta
+      name="twitter:image:alt"
+      content={page ? `${page.name} — Teor, por Como Votam` : 'Teor — benchmark legislativo'}
+    />
     <meta name="theme-color" content="#f9f9fb" />
-    <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
+    <link rel="icon" type="image/svg+xml" sizes="any" href={urls.path('favicon.svg')} />
+    <link rel="icon" type="image/png" sizes="48x48" href={urls.path('icons/48.png')} />
+    <link rel="apple-touch-icon" sizes="180x180" href={urls.path('icons/180.png')} />
+    <link rel="manifest" href={urls.path('site.webmanifest')} />
+    <link rel="sitemap" type="application/xml" href={urls.path('sitemap.xml')} />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="Execuções publicadas no Teor"
+      href={urls.path('feed.xml')}
+    />
+    {page && (
+      <link
+        rel="alternate"
+        type="text/markdown"
+        title={`${page.name} em Markdown`}
+        href={urls.path(markdownPath(page))}
+      />
+    )}
+    {page && (
+      <script is:inline type="application/ld+json" set:html={serializeJson(schemaGraph(page))} />
+    )}
     {umami && umamiId && <script is:inline defer src={umami} data-website-id={umamiId}></script>}
   </head>
   <body>
@@ -113,7 +178,11 @@ const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
         </div>
         <nav aria-label="Informações">
           <span class="eyebrow">O projeto</span>
+          <a href={`${base}sobre/`}>Sobre o Teor</a>
+          <a href={`${base}trilhas/`}>Trilhas de avaliação</a>
+          <a href={`${base}modelos/`}>Modelos e baselines</a>
           <a href={`${base}dados/`}>Dados e fontes</a>
+          <a href={`${base}como-citar/`}>Como citar</a>
           <a href={`${base}erratas/`}>Erratas</a>
           <a href={`${base}contribuir/`}>Contribuir</a>
           <a href={`${base}revisar/`}>Revisar itens</a>
@@ -129,7 +198,10 @@ const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
       </div>
       <div class="footer-bottom">
         <span>Teor · Como Votam</span>
-        <span>Fontes oficiais. Protocolo público.</span>
+        <span>
+          <a href={`${base}llms.txt`}>Índice para agentes</a> ·{' '}
+          <a href={`${base}sitemap.xml`}>Mapa do site</a> · <a href={`${base}feed.xml`}>RSS</a>
+        </span>
       </div>
     </footer>
     <script>

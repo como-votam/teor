@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Breadcrumbs from '../components/seo/Breadcrumbs.astro';
 import type { MarkdownInstance } from 'astro';
 const docs = import.meta.glob<MarkdownInstance<Record<string, unknown>>>('../../../docs/*.md', {
   eager: true,
@@ -19,6 +20,7 @@ const { Content } = docs[`../../../docs/${file}.md`];
 ---
 
 <Layout title={title}>
+  <Breadcrumbs />
   <div class="document-shell">
     <nav class="document-nav" aria-label="Documentação">
       <p class="eyebrow">Documentação</p>

@@ -1890,3 +1890,49 @@ pre {
     max-width: 100%;
   }
 }
+
+.citable-facts {
+  margin-top: 32px;
+}
+.citable-facts h2 {
+  font-size: 24px;
+  line-height: 32px;
+  margin: 0 0 12px;
+}
+.citable-facts p {
+  font-size: 14px;
+  line-height: 20px;
+  max-width: 100%;
+}
+.citable-facts dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 24px 0;
+}
+.citable-facts dt {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--muted);
+}
+.citable-facts dd {
+  margin: 8px 0 0;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+.citable-facts .citable-source {
+  font-size: 12px;
+  line-height: 20px;
+  margin-bottom: 0;
+}
+@media (max-width: 760px) {
+  .citable-facts dl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .breadcrumbs {
+    flex-wrap: wrap;
+  }
+}

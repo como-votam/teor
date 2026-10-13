@@ -1,0 +1,58 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Breadcrumbs from '../components/seo/Breadcrumbs.astro';
+import CitableFacts from '../components/seo/CitableFacts.astro';
+import { urls, REPOSITORY, SOURCES } from '../lib/seo/config';
+---
+
+<Layout title="Sobre o Teor">
+  <Breadcrumbs />
+  <article class="prose">
+    <p class="eyebrow">Projeto e manutenção</p>
+    <h1>
+      Um benchmark aberto.
+      <br />
+      Uma resposta verificável.
+    </h1>
+    <p>
+      O Teor é um benchmark do Como Votam para avaliar modelos de linguagem sobre o processo
+      legislativo brasileiro. Câmara e Senado fornecem os registros; o protocolo define o
+      experimento.
+    </p>
+    <h2>Quem mantém o projeto</h2>
+    <p>
+      O Como Votam mantém o Teor. Adriano Coelho é o mantenedor identificado no{' '}
+      <a href={`${REPOSITORY}/blob/main/README.md`}>README público</a>. O projeto não presume
+      validação institucional, parceria acadêmica ou revisão por especialistas ainda não realizada.
+    </p>
+    <h2>Como os resultados são publicados</h2>
+    <p>
+      Cada execução registra modelo, conjunto, protocolo, parâmetros, métricas e consumo. Submissões
+      externas são autodeclaradas até que a reprodução ou a execução supervisionada sustente a
+      verificação.
+    </p>
+    <p>
+      O Como Votam utiliza LLMs no produto. Isso não altera as regras do benchmark. O Teor não
+      utiliza prompts nem dados privados desse produto.
+    </p>
+    <h2>Fontes e reuso</h2>
+    <ul>
+      {SOURCES.map((s) => (
+        <li>
+          <a href={s.url}>{s.name}</a>
+        </li>
+      ))}
+    </ul>
+    <p>
+      O código é Apache 2.0. Os termos de documentos, itens derivados e marca são separados; a
+      proposta de licença dos dados continua condicionada à confirmação das fontes.
+    </p>
+    <p>
+      <a href={REPOSITORY}>Abrir o código</a> ·{' '}
+      <a href={urls.path('metodologia/')}>Ler o protocolo</a> ·{' '}
+      <a href={urls.path('erratas/')}>Consultar erratas</a> ·{' '}
+      <a href={urls.path('como-citar/')}>Citar o projeto</a>
+    </p>
+    <CitableFacts />
+  </article>
+</Layout>

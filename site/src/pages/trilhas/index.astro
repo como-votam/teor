@@ -1,0 +1,30 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Breadcrumbs from '../../components/seo/Breadcrumbs.astro';
+import { tracks } from '../../data';
+import { trackDetails } from '../../lib/seo/content';
+import { urls } from '../../lib/seo/config';
+---
+
+<Layout title="Trilhas de avaliação">
+  <Breadcrumbs />
+  <p class="eyebrow">Oito capacidades</p>
+  <h1>
+    Qual pergunta
+    <br />o modelo responde?
+  </h1>
+  <p>
+    O Teor separa compreensão factual, previsão, citações, ferramentas e cenários contrafactuais.
+    Abra uma trilha para conhecer a tarefa, as métricas e os limites.
+  </p>
+  <div class="article-list">
+    {tracks.map(([id, name, description]) => (
+      <a href={urls.path(`trilhas/${id.toLowerCase()}/`)}>
+        {id} · {name}
+        <span>
+          {description} {trackDetails[id].question}
+        </span>
+      </a>
+    ))}
+  </div>
+</Layout>

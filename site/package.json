@@ -8,10 +8,11 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "astro check && astro build",
+    "build": "astro check && astro build && npm run check:seo",
     "preview": "astro preview",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "check:seo": "node scripts/check-seo.mjs"
   },
   "dependencies": {
     "@duckdb/duckdb-wasm": "^1.29.0",
@@ -25,8 +26,11 @@
     "@axe-core/playwright": "^4.10.0",
     "@playwright/test": "^1.55.0",
     "@types/node": "^26.6.5",
+    "cheerio": "^1.2.0",
+    "fontkitten": "^1.0.3",
     "prettier": "^3.9.9",
     "prettier-plugin-astro": "^1.1.1",
+    "sharp": "^0.35.5",
     "typescript": "^5.9.0",
     "vitest": "^5.0.3"
   }

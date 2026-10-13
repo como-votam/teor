@@ -1,5 +1,8 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import Breadcrumbs from '../../components/seo/Breadcrumbs.astro';
+import { resultPath } from '../../lib/seo/registry';
+import { urls } from '../../lib/seo/config';
 
 import { data, slug, taskNames, modeNames, chamberNames } from '../../data';
 export function getStaticPaths() {
@@ -13,11 +16,7 @@ const results = data.results.filter((r) => r.model === model);
 ---
 
 <Layout title={model}>
-  <nav class="breadcrumbs" aria-label="Localização">
-    <a href={import.meta.env.BASE_URL}>Comparar resultados</a>
-    <span aria-hidden="true">/</span>
-    <span>Perfil</span>
-  </nav>
+  <Breadcrumbs />
   <p class="eyebrow">PERFIL DO MODELO</p>
   <h1>{model}</h1>
   <p>
@@ -25,7 +24,7 @@ const results = data.results.filter((r) => r.model === model);
     protocolo.
   </p>
   {results.map((result) => (
-    <section class="model-run">
+    <section class="model-run" id={`execucao-${encodeURIComponent(result.id)}`}>
       <h2>
         Execução de{' '}
         {new Date(result.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
@@ -103,6 +102,13 @@ const results = data.results.filter((r) => r.model === model);
           </tbody>
         </table>
       </div>
+      <p class="status" data-citable>
+        Execução <strong>{result.id}</strong> de <strong>{model}</strong>, criada em{' '}
+        <time datetime={result.created_at}>{result.created_at}</time>. Cobertura de{' '}
+        {(result.usage.coverage * 100).toFixed(1)}%; verificação {result.verification}.{' '}
+        <a href={urls.path(resultPath(result))}>Baixar métricas públicas em JSON</a> ·{' '}
+        <a href={urls.path('como-citar/')}>Como citar esta execução</a>
+      </p>
       <details>
         <summary>Protocolo e parâmetros</summary>
         <pre>{JSON.stringify({dataset:result.dataset_hash,protocol:result.protocol_hash,config:result.config},null,2)}</pre>

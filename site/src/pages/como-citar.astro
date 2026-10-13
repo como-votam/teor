@@ -1,0 +1,81 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { softwareVersion } from '../lib/seo/citation';
+import Breadcrumbs from '../components/seo/Breadcrumbs.astro';
+import { urls, SOURCES } from '../lib/seo/config';
+import { modelPages } from '../lib/seo/registry';
+import { modelName } from '../data';
+---
+
+<Layout title="Como citar">
+  <Breadcrumbs />
+  <article class="prose">
+    <p class="eyebrow">Citação e reprodução</p>
+    <h1>
+      Cite o experimento,
+      <br />
+      junto da nota.
+    </h1>
+    <p>
+      A versão do software não substitui o conjunto e o protocolo da avaliação. Uma nota só é
+      interpretável com a tarefa e as condições que a produziram.
+    </p>
+    <h2>Citar o software</h2>
+    <blockquote>
+      <p>
+        Como Votam. Teor: benchmark aberto do processo legislativo brasileiro. Versão{' '}
+        {softwareVersion}. {urls.absolute()}
+      </p>
+    </blockquote>
+    <p>
+      <a href={urls.path('CITATION.cff')} download>
+        Baixar referência CFF
+      </a>{' '}
+      ·{' '}
+      <a href={urls.path('citation.bib')} download>
+        Baixar BibTeX
+      </a>
+    </p>
+    <h2>Citar uma execução</h2>
+    <p>
+      Informe modelo, identificação e data da execução, tarefa, casa, modo, divisão, qualidade
+      temporal, hashes completos de conjunto e protocolo, nota com intervalo de confiança, cobertura
+      e verificação.
+    </p>
+    <pre>Teor. Modelo: [identificador]. Execução: [id e data].
+Tarefa: [trilha e tarefa]. Casa: [Câmara ou Senado].
+Modo: [com contexto, sem contexto ou ferramentas].
+Divisão: [split]. Qualidade temporal: [classificação].
+Conjunto: [hash completo]. Protocolo: [hash completo].
+Resultado: [nota e IC 95%]. Cobertura: [percentual].
+Verificação: [estado]. Fonte: [URL do perfil ou JSON].</pre>
+    <p>
+      Um baseline determinístico não é um LLM. Uma submissão autodeclarada não deve ser descrita
+      como verificada. Previsão retrospectiva não demonstra previsão prospectiva.
+    </p>
+    <h2>Resultados disponíveis</h2>
+    <ul>
+      {modelPages.map((p) => (
+        <li>
+          <a href={urls.path(p.path)}>{modelName(p.model!)}</a>
+        </li>
+      ))}
+    </ul>
+    <p>
+      <a href={urls.path('resultados/index.json')}>Abrir catálogo de métricas em JSON</a>
+    </p>
+    <h2>Fontes primárias</h2>
+    <ul>
+      {SOURCES.map((s) => (
+        <li>
+          <a href={s.url}>{s.name}</a>
+        </li>
+      ))}
+    </ul>
+    <p>
+      Ao citar um fato legislativo, use também a evidência do item.{' '}
+      <a href={urls.path('dados/')}>Confira as condições de reuso</a> e a{' '}
+      <a href={urls.path('erratas/')}>política de correções</a>.
+    </p>
+  </article>
+</Layout>

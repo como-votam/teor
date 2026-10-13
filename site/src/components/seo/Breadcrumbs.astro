@@ -1,0 +1,20 @@
+---
+import { findPage, breadcrumbs } from '../../lib/seo/registry';
+import { urls } from '../../lib/seo/config';
+const page = findPage(Astro.url.pathname);
+---
+
+{page && page.path && (
+  <nav class="breadcrumbs" aria-label="Localização">
+    {breadcrumbs(page).map((p, i, list) => (
+      <>
+        {i > 0 && <span aria-hidden="true">/</span>}
+        {i === list.length - 1 ? (
+          <span aria-current="page">{p.name}</span>
+        ) : (
+          <a href={urls.path(p.path)}>{p.path ? p.name : 'Teor'}</a>
+        )}
+      </>
+    ))}
+  </nav>
+)}

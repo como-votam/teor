@@ -1,0 +1,41 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Breadcrumbs from '../../components/seo/Breadcrumbs.astro';
+import { modelPages } from '../../lib/seo/registry';
+import { data, modelName } from '../../data';
+import { urls } from '../../lib/seo/config';
+const executionCount = (model: string) => data.results.filter((r) => r.model === model).length;
+---
+
+<Layout title="Referências e modelos">
+  <Breadcrumbs />
+  <p class="eyebrow">Execuções publicadas</p>
+  <h1>
+    Abra o resultado.
+    <br />
+    Confira as condições.
+  </h1>
+  <p>
+    Os perfis reúnem métricas por execução. Baselines são referências determinísticas; notas de
+    tarefas diferentes não formam um ranking global.
+  </p>
+  <div class="article-list">
+    {modelPages.map((p) => (
+      <a href={urls.path(p.path)}>
+        {modelName(p.model!)}
+        <span>
+          {p.model!.startsWith('baseline/') ? 'Baseline determinístico' : 'Modelo de linguagem'} ·{' '}
+          {executionCount(p.model!)}{' '}
+          {executionCount(p.model!) === 1 ? 'execução publicada' : 'execuções publicadas'}
+        </span>
+      </a>
+    ))}
+  </div>
+  {!modelPages.length && (
+    <div class="empty">
+      <h2>Nenhum resultado publicado</h2>
+      <p>As avaliações entram aqui após uma execução documentada.</p>
+      <a href={urls.path('contribuir/')}>Como submeter uma avaliação →</a>
+    </div>
+  )}
+</Layout>
