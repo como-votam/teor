@@ -9,11 +9,11 @@ htmlcov/
 .env
 .env.*
 !.env.example
-data/
-private/
-logs/
-exports/
-reports/
+/data/
+/private/
+/logs/
+/exports/
+/reports/
 site/node_modules/
 site/dist/
 dist/
