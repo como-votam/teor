@@ -3,6 +3,7 @@ import mvp from '@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url';
 import eh from '@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url';
 import mvpWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?url';
 import ehWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url';
+import { chamberNames, modeNames, taskNames } from '../data/labels';
 import type { Item } from '../data';
 
 const partitions = JSON.parse(document.getElementById('partitions')!.textContent!) as {
@@ -12,6 +13,7 @@ let db: duckdb.AsyncDuckDB | undefined;
 let connection: duckdb.AsyncDuckDBConnection | undefined;
 let loaded = 0;
 let timer: ReturnType<typeof setTimeout>;
+let renderVersion = 0;
 const status = document.getElementById('explorer-status')!;
 const load = document.getElementById('load') as HTMLButtonElement;
 async function initialize() {
@@ -30,6 +32,7 @@ async function initialize() {
 }
 async function render() {
   if (!connection) return;
+  const version = ++renderVersion;
   const search = (document.getElementById('search') as HTMLInputElement).value;
   const track = (document.getElementById('explorer-track') as HTMLSelectElement).value;
   const statement = await connection.prepare(
@@ -37,14 +40,33 @@ async function render() {
   );
   const table = await statement.query(search, track, track);
   await statement.close();
+  if (version !== renderVersion) return;
   const container = document.getElementById('items')!;
   container.replaceChildren();
   for (const row of table.toArray()) {
     const item = JSON.parse(row.item_json) as Item;
     const details = document.createElement('details');
     const summary = document.createElement('summary');
-    summary.textContent = `${item.track} · ${item.prompts[0]}`;
+    const code = document.createElement('span');
+    code.className = 'track-code';
+    code.textContent = item.track;
+    const prompt = document.createElement('span');
+    prompt.textContent = item.prompts[0];
+    summary.append(code, prompt);
     details.append(summary);
+    const meta = document.createElement('div');
+    meta.className = 'item-meta';
+    [
+      taskNames[item.task] || item.task,
+      chamberNames[item.chamber] || item.chamber,
+      modeNames[item.mode] || item.mode,
+    ].forEach((text) => {
+      const badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.textContent = text;
+      meta.append(badge);
+    });
+    details.append(meta);
     const pre = document.createElement('pre');
     pre.textContent = JSON.stringify({ context: item.context, answer: item.answer }, null, 2);
     details.append(pre);
@@ -57,10 +79,26 @@ async function render() {
     }
     container.append(details);
   }
+  if (!table.numRows) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    const heading = document.createElement('h2');
+    heading.textContent = 'Nenhum item nesta busca';
+    const help = document.createElement('p');
+    help.textContent = 'Tente outro termo, escolha outra trilha ou carregue a próxima partição.';
+    empty.append(heading, help);
+    container.append(empty);
+  }
   status.textContent = `${table.numRows} itens exibidos; ${loaded} de ${partitions.length} partições carregadas.`;
 }
 load.addEventListener('click', async () => {
   load.disabled = true;
+  load.setAttribute('aria-busy', 'true');
+  status.textContent = 'Carregando a partição de dados…';
+  const skeleton = document.createElement('div');
+  skeleton.className = 'loading-skeleton';
+  skeleton.setAttribute('aria-hidden', 'true');
+  document.getElementById('items')!.prepend(skeleton);
   try {
     await initialize();
     if (loaded >= partitions.length) {
@@ -79,11 +117,24 @@ load.addEventListener('click', async () => {
   } catch (error) {
     status.textContent = `Não foi possível abrir os dados. Tente novamente. ${String(error)}`;
   } finally {
+    skeleton.remove();
+    load.removeAttribute('aria-busy');
     load.disabled = loaded >= partitions.length;
   }
 });
 for (const id of ['search', 'explorer-track'])
   document.getElementById(id)!.addEventListener('input', () => {
     clearTimeout(timer);
-    timer = setTimeout(() => void render(), 200);
+    timer = setTimeout(() => {
+      void render().catch(() => {
+        status.textContent =
+          'Não foi possível aplicar a busca. Tente outro termo ou carregue a próxima partição.';
+      });
+    }, 200);
   });
+
+const trackParam = new URLSearchParams(location.search).get('track');
+const trackSelect = document.getElementById('explorer-track') as HTMLSelectElement;
+if (trackParam && Array.from(trackSelect.options).some((o) => o.value === trackParam))
+  trackSelect.value = trackParam;
+load.disabled = !partitions.length;

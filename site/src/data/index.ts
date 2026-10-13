@@ -66,10 +66,14 @@ export interface Dataset {
   examples?: { model: string; run_id: string; item: Item; response: unknown; score: number }[];
 }
 const file = path.resolve('src/data/generated.json');
+const publishedResults = path.resolve('../results');
 export const data: Dataset = fs.existsSync(file)
   ? JSON.parse(fs.readFileSync(file, 'utf8'))
   : {
-      results: [],
+      results: (fs.existsSync(publishedResults) ? fs.readdirSync(publishedResults) : [])
+        .filter((name) => /^baseline-.*\.json$/.test(name))
+        .sort()
+        .map((name) => JSON.parse(fs.readFileSync(path.join(publishedResults, name), 'utf8'))),
       partitions: [],
       quiz: [],
       predictions: [],
@@ -88,32 +92,4 @@ export const tracks = [
   ['H', 'Paridade', 'Diferenças entre cenários contrafactuais pareados.'],
 ];
 export const slug = (value: string) => encodeURIComponent(value.replaceAll('/', '--'));
-export const taskNames: Record<string, string> = {
-  type: 'Tipo de proposição',
-  authors: 'Autoria',
-  references: 'Referências normativas',
-  unknown_author: 'Informação insuficiente',
-  thematic_relevance: 'Pertinência temática (experimental)',
-  rule: 'Regra legislativa',
-  threshold: 'Aplicação de quórum',
-  sequence: 'Sequência de órgãos',
-  last_body: 'Último órgão',
-  bodies: 'Órgãos do histórico',
-  body_changes: 'Mudanças de órgão',
-  yes_count: 'Contagem de votos sim',
-  party_yes: 'Votos sim por partido',
-  vote_distribution: 'Distribuição de votos',
-  official_tally: 'Placar oficial',
-  result: 'Resultado oficial',
-  approval: 'Probabilidade de aprovação',
-  individual_yes: 'Probabilidade de voto sim',
-  claims: 'Afirmações e citações',
-  counterfactual_count: 'Contagem contrafactual',
-  paired_gap: 'Diferença pareada',
-};
-export const modeNames: Record<string, string> = {
-  with_context: 'Com contexto',
-  closed_book: 'Sem contexto',
-  tools: 'Com ferramentas',
-};
-export const chamberNames: Record<string, string> = { camara: 'Câmara', senado: 'Senado' };
+export { taskNames, modeNames, chamberNames, modelName } from './labels';

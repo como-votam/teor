@@ -3,7 +3,8 @@ export default defineConfig({
   testDir: 'tests/e2e',
   use: { baseURL: 'http://127.0.0.1:4321', trace: 'retain-on-failure' },
   webServer: {
-    command: 'npm run preview -- --host 127.0.0.1',
+    // Astro 7 backgrounds agent previews unless --ignore-lock requests a foreground server.
+    command: 'npm run preview -- --host 127.0.0.1 --ignore-lock',
     port: 4321,
     reuseExistingServer: !process.env.CI,
   },

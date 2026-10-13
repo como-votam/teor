@@ -1,5 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+
 import { data, slug, taskNames, modeNames, chamberNames } from '../../data';
 export function getStaticPaths() {
   return [...new Set(data.results.map((r) => r.model))].map((model) => ({
@@ -12,6 +13,11 @@ const results = data.results.filter((r) => r.model === model);
 ---
 
 <Layout title={model}>
+  <nav class="breadcrumbs" aria-label="Localização">
+    <a href={import.meta.env.BASE_URL}>Comparar resultados</a>
+    <span aria-hidden="true">/</span>
+    <span>Perfil</span>
+  </nav>
   <p class="eyebrow">PERFIL DO MODELO</p>
   <h1>{model}</h1>
   <p>
@@ -19,7 +25,7 @@ const results = data.results.filter((r) => r.model === model);
     protocolo.
   </p>
   {results.map((result) => (
-    <section>
+    <section class="model-run">
       <h2>
         Execução de{' '}
         {new Date(result.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
@@ -35,6 +41,28 @@ const results = data.results.filter((r) => r.model === model);
           ? 'não informada'
           : `${result.usage.latency_mean_seconds.toFixed(2)} s`}
       </p>
+      <div class="model-stats">
+        <div>
+          <small>Cobertura da execução</small>
+          <strong>{(result.usage.coverage * 100).toFixed(1).replace('.', ',')}%</strong>
+        </div>
+        <div>
+          <small>Custo informado</small>
+          <strong>
+            {result.usage.cost_usd === null
+              ? 'Não informado'
+              : `US$ ${result.usage.cost_usd.toFixed(4)}`}
+          </strong>
+        </div>
+        <div>
+          <small>Latência média</small>
+          <strong>
+            {result.usage.latency_mean_seconds === null
+              ? 'Não informada'
+              : `${result.usage.latency_mean_seconds.toFixed(2)} s`}
+          </strong>
+        </div>
+      </div>
       <div class="table-wrap" tabindex="0" role="region" aria-label="Métricas por tarefa">
         <table>
           <thead>
@@ -59,6 +87,11 @@ const results = data.results.filter((r) => r.model === model);
                     : m.mean !== undefined
                       ? `${m.first} − ${m.second}: ${(m.mean * 100).toFixed(1)} pontos percentuais (${m.ci95?.map((n) => (n * 100).toFixed(1)).join('–')})`
                       : m.semantic_fidelity || 'Métrica específica'}
+                  {m.score && (
+                    <span class="score-inline" aria-hidden="true">
+                      <span style={`width:${m.score.mean * 100}%`}></span>
+                    </span>
+                  )}
                   {m.brier && ` · Brier ${m.brier.mean.toFixed(3)}`}
                   {m.citation_validity &&
                     ` · trechos localizados ${(m.citation_validity.mean * 100).toFixed(1)}%`}

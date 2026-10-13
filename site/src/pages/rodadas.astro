@@ -14,6 +14,23 @@ import { data } from '../data';
     Rodadas congelam um lote, recebem previsões até o prazo e divulgam o gabarito após o fechamento.
     Não presumimos conhecer o corte de treinamento de cada modelo.
   </p>
+  <div class="round-steps">
+    <article>
+      <span class="track-code">01</span>
+      <h3>Lote congelado</h3>
+      <p>Os itens e o protocolo são definidos antes da rodada.</p>
+    </article>
+    <article>
+      <span class="track-code">02</span>
+      <h3>Previsões recebidas</h3>
+      <p>As submissões chegam até o prazo de fechamento.</p>
+    </article>
+    <article>
+      <span class="track-code">03</span>
+      <h3>Gabarito publicado</h3>
+      <p>Respostas e resultados são divulgados após o fechamento.</p>
+    </article>
+  </div>
   {data.rounds.length ? (
     <div class="table-wrap">
       <table>
@@ -41,6 +58,9 @@ import { data } from '../data';
     <div class="empty">
       <h2>Nenhuma rodada publicada</h2>
       <p>As datas e os resultados aparecem aqui quando uma rodada for concluída e divulgada.</p>
+      <a class="button" href={`${import.meta.env.BASE_URL}contribuir/`}>
+        Como participar →
+      </a>
     </div>
   )}
 </Layout>

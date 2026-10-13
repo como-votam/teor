@@ -1,0 +1,111 @@
+/* Adapted from comovotam-frontend/src/app/(public)/globals.css. */
+:root {
+  --color-bg-base: #f9f9fb;
+  --color-bg-header: #f5f5f7;
+  --color-bg-subtle: #f3f3f5;
+  --color-bg-muted: #e8e8ea;
+  --color-bg-muted-strong: #e2e2e4;
+  --color-bg-muted-soft: #eeeef0;
+  --color-bg-elevated: #ffffff;
+  --color-border: #c4c6cd;
+
+  --color-ink: #041627;
+  --color-on-surface: #1a1c1d;
+  --color-on-background: #1a1c1d;
+  --color-on-surface-variant: #44474c;
+  --color-brand: #1a2b3c;
+  --color-muted: #44474c;
+  --color-secondary: #48626e;
+  --color-secondary-variant: #4e6874;
+  --color-outline: #74777d;
+  --color-brand-soft: #8192a7;
+  --color-placeholder: #6b7075;
+
+  --color-primary: #1b6d24;
+  --color-primary-hover: #14561c;
+  --color-primary-active: #113f16;
+  --color-primary-dark: #003207;
+  --color-primary-deep: #001a02;
+  --color-primary-light: #53a252;
+  --color-agree: #53a252;
+  --color-agree-tint: #f2f7f1;
+  --color-primary-tint: #88d982;
+  --color-primary-soft: #a3f69c;
+  --color-primary-soft-text: #005312;
+
+  --color-info-bg: #cbe7f5;
+  --color-topic-bg: #eef2f5;
+  --color-error: #ba1a1a;
+  --color-error-tint: #faf2f1;
+  --color-error-bg: #ffdad6;
+  --color-error-strong: #93000a;
+
+  --color-line: #e3e5e8;
+  --color-line-strong: #d7dade;
+  --color-ghost-hover: #eeeff1;
+  --color-ghost-active: #e0e2e6;
+  --color-row-hover: #f3f4f6;
+  --color-row-active: #ebedef;
+  --color-field-hover: #c2c6cb;
+  --color-field-focus: #8b939c;
+
+  --color-bar-neutral: #b7c0c7;
+  --color-bar-divergent: #dfa8a5;
+  --color-bar-track: #eef0f2;
+
+  --color-ink-hover: #0d2740;
+  --color-ink-active: #081d2f;
+  --color-neutral-tint: #f3f5f6;
+  --color-skip-tint: #f4f4f5;
+  --color-mark: #dbe7d9;
+  --color-mark-text: #0f3f14;
+  --color-selection: #dfe3e7;
+
+  /* Espectro ideológico (mapa e hemiciclo de /bancadas): escala divergente
+     azul (esquerda) → cinza neutro (centro) → âmbar (direita), deliberadamente
+     distinta do par verde/vermelho usado para resultado de votação em outras
+     telas, para nunca ler como "a favor/contra". */
+  --color-lean-l3: #17395e;
+  --color-lean-l2: #2c5c8c;
+  --color-lean-l1: #7fa5c9;
+  --color-lean-c: #9aa1a6;
+  --color-lean-r1: #cd9f61;
+  --color-lean-r2: #a5641c;
+  --color-lean-r3: #703c0a;
+  --color-lean-na: #dcdde0;
+
+  /* Composição por gênero (mapa e hemiciclo de /parlamentares): categórica,
+     nova família de matizes que não colide com o verde/vermelho de resultado
+     de votação nem com o azul/âmbar do espectro ideológico. */
+  --color-gender-m: #48626e;
+  --color-gender-f: #a15277;
+  --color-gender-nb: #7d641f;
+  --color-gender-na: #9aa1a6;
+
+  /* Faixa etária (histograma de /parlamentares): ordinal, um matiz só,
+     claro→escuro do mais jovem ao mais velho. Violeta — família nova, não
+     usada em nenhum outro gráfico do site (verde/vermelho = resultado de
+     voto, azul/âmbar = ideologia, teal/rosa = gênero). */
+  --color-age-1: #cbb8de;
+  --color-age-2: #9c85bf;
+  --color-age-3: #705fa0;
+  --color-age-4: #473b73;
+
+  /* Ausência (mapa "Onde cada estado elegeu" de /bancadas): terracota dedicado. Ausência não
+     é "voto contra" — é comparecimento — então não deve ler como o vermelho de resultado de
+     votação (error) nem colidir com nenhuma outra família categórica já em uso. */
+  --color-absence: #9c5330;
+
+  /* Índice de governismo: composição seguiu / divergiu / absteve-se. Deliberadamente SEM o par
+     verde/vermelho de resultado de voto nem o azul/âmbar do espectro ideológico: o índice descreve
+     coincidência com a orientação do Governo, não "certo/errado" nem "a favor/contra". São três
+     tons de uma só família neutra (tinta, cinza-azulado, cinza claro), distinguíveis também sem cor
+     (comprimento + hachura no componente). */
+  --color-gov-follow: var(--color-brand);
+  --color-gov-diverge: var(--color-bar-neutral);
+  --color-gov-abstain: var(--color-line-strong);
+
+  --ease-editorial: cubic-bezier(0.2, 0.7, 0.3, 1);
+  --radius: 0.25rem;
+  --radius-card: 0.375rem;
+}

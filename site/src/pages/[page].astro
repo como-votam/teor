@@ -19,7 +19,26 @@ const { Content } = docs[`../../../docs/${file}.md`];
 ---
 
 <Layout title={title}>
-  <article class="prose">
-    <Content />
-  </article>
+  <div class="document-shell">
+    <nav class="document-nav" aria-label="Documentação">
+      <p class="eyebrow">Documentação</p>
+      {[
+        ['metodologia', 'Metodologia'],
+        ['dados', 'Dados e fontes'],
+        ['contribuir', 'Contribuir'],
+        ['revisar', 'Revisar itens'],
+        ['erratas', 'Erratas'],
+      ].map(([href, label]) => (
+        <a
+          href={`${import.meta.env.BASE_URL}${href}/`}
+          aria-current={Astro.params.page === href ? 'page' : undefined}
+        >
+          {label}
+        </a>
+      ))}
+    </nav>
+    <article class="prose">
+      <Content />
+    </article>
+  </div>
 </Layout>

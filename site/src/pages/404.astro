@@ -1,0 +1,21 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Icon from '../components/Icon.astro';
+---
+
+<Layout title="Página não encontrada">
+  <div class="page-intro">
+    <p class="eyebrow">404 / Página não encontrada</p>
+    <h1>
+      Esse caminho
+      <br />
+      não tem resultado.
+    </h1>
+    <p class="lead">
+      O endereço pode ter mudado. Volte à comparação ou abra o explorador de itens.
+    </p>
+    <a class="button" href={import.meta.env.BASE_URL}>
+      Voltar aos resultados <Icon name="arrow" />
+    </a>
+  </div>
+</Layout>

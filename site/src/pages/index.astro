@@ -1,134 +1,389 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { data, tracks, slug, taskNames, modeNames, chamberNames } from '../data';
+import Icon from '../components/Icon.astro';
+import { data, tracks, slug, taskNames, modeNames, chamberNames, modelName } from '../data';
 const base = import.meta.env.BASE_URL;
 const cohorts = [...new Set(data.results.map((r) => `${r.dataset_hash}:${r.protocol_hash}`))];
+const metrics = data.results.flatMap((r) =>
+  r.metrics.filter((m) => m.score && m.category !== 'experimental').map((m) => ({ r, m })),
+);
+const tasks = [...new Set(metrics.map(({ m }) => m.task))];
+const splits = [...new Set(metrics.map(({ m }) => m.split || ''))];
+const temporal = [...new Set(metrics.map(({ m }) => m.temporal_quality || ''))];
+const modelCount = new Set(data.results.map((r) => r.model)).size;
+const baselineOnly =
+  data.results.length > 0 && data.results.every((r) => r.model.startsWith('baseline/'));
+const first =
+  metrics.find(
+    ({ m }) => m.task === 'type' && m.mode === 'with_context' && m.chamber === 'camara',
+  ) || metrics[0];
+const faqs = [
+  [
+    'O Teor dá uma nota geral para cada modelo?',
+    'Não. Compreender um texto, prever um voto e buscar uma fonte são tarefas diferentes. Cada uma tem sua própria métrica e seu próprio intervalo de confiança.',
+  ],
+  [
+    'O que são os baselines publicados?',
+    'São referências determinísticas: escolha aleatória, classe majoritária estimada no conjunto de desenvolvimento e busca por BM25. Eles ajudam a interpretar avaliações futuras, mas não são modelos de linguagem.',
+  ],
+  [
+    'Posso comparar quaisquer dois resultados?',
+    'Compare a mesma tarefa, casa, modo, divisão, qualidade temporal, conjunto e protocolo. Os filtros iniciais selecionam um recorte comparável; ao ampliá-lo, leia cada linha separadamente.',
+  ],
+  [
+    'De onde vêm os gabaritos?',
+    'De registros e documentos oficiais da Câmara dos Deputados e do Senado Federal. As evidências e os limites de uso são documentados na política de dados.',
+  ],
+  [
+    'O quiz guarda minhas respostas?',
+    'Não. As respostas e a pontuação ficam apenas na página aberta. A comparação com modelos exige que eles tenham respondido exatamente aos mesmos itens.',
+  ],
+  [
+    'Como publico uma avaliação?',
+    'Execute o protocolo, preserve as previsões e prepare um pacote de submissão reproduzível. A página de contribuição explica os arquivos e a verificação necessária.',
+  ],
+];
 ---
 
 <Layout title="A IA entende o Congresso?">
   <section class="hero">
-    <div>
-      <p class="eyebrow">BENCHMARK ABERTO · CÂMARA E SENADO</p>
+    <div class="hero-copy">
+      <p class="eyebrow">
+        <span class="live-dot"></span> Benchmark aberto do Legislativo brasileiro
+      </p>
       <h1>
         A IA entende
         <br />o Congresso?
       </h1>
       <p class="lead">
-        Compare o que modelos de linguagem conseguem responder sobre textos, regras e votações do
-        Legislativo brasileiro.
+        Entre uma resposta convincente e uma resposta correta, existe a fonte. O Teor testa modelos
+        de linguagem com textos, regras e votações reais.
       </p>
+      <a class="button" href="#comparar">
+        Explorar os resultados <Icon name="arrow" />
+      </a>
+      <p class="hero-footnote">Câmara e Senado · Protocolo público · Sem nota única</p>
     </div>
-    <aside>
-      Oito trilhas. Nenhuma nota única.
-      <br />
-      <br />
-      Compreender um texto, prever um voto e consultar uma fonte são capacidades diferentes.
+    <aside class="benchmark-map" aria-label="Mapa interativo das oito trilhas">
+      <div class="panel-heading">
+        <span class="eyebrow">Anatomia do benchmark</span>
+        <span class="badge">8 trilhas</span>
+      </div>
+      <svg
+        class="track-map"
+        viewBox="0 0 440 230"
+        role="img"
+        aria-label="Oito setores representam as trilhas do benchmark, inspirados no hemiciclo do Como Votam. Não representam votos."
+      >
+        {tracks.map(([id], index) => (
+          <g data-sector={id} class:list={['map-sector', { selected: index === 0 }]}>
+            {Array.from({ length: 5 }, (_, ring) =>
+              Array.from({ length: 5 }, (_, dot) => {
+                const angle = Math.PI + ((index * 5 + dot + 0.5) * Math.PI) / 40;
+                const radius = 102 + ring * 24;
+                return (
+                  <circle
+                    cx={220 + Math.cos(angle) * radius}
+                    cy={214 + Math.sin(angle) * radius}
+                    r={4}
+                  />
+                );
+              }),
+            )}
+          </g>
+        ))}
+        <text x="220" y="168" text-anchor="middle" class="map-number">
+          8
+        </text>
+        <text x="220" y="195" text-anchor="middle" class="map-label">
+          capacidades, uma a uma
+        </text>
+      </svg>
+      <div class="map-tabs" role="group" aria-label="Selecionar trilha">
+        {tracks.map(([id, name], i) => (
+          <button
+            class="map-tab"
+            data-map-track={id}
+            aria-pressed={i === 0}
+            aria-label={`${id} · ${name}`}
+          >
+            {id}
+          </button>
+        ))}
+      </div>
+      <div class="map-description" aria-live="polite">
+        <strong id="map-title">A · Texto</strong>
+        <p id="map-copy">Tipos, autoria e referências explícitas.</p>
+        <a class="text-link" id="map-link" href="#trilha-A">
+          Conhecer esta trilha <Icon name="arrow" size={16} />
+        </a>
+      </div>
+      <script type="application/json" id="track-data" set:html={JSON.stringify(tracks)} />
     </aside>
   </section>
-  <h2>Compare por trilha</h2>
-  {data.results.length > 0 && data.results.every((r) => r.model.startsWith('baseline/')) && (
-    <p class="notice">
-      Os resultados disponíveis são baselines determinísticos. Ainda não há avaliações de modelos de
-      linguagem.
-    </p>
-  )}
-  <div class="filters">
-    <label>
-      Trilha
-      <select id="track">
-        <option value="">Todas</option>
-        {tracks.map(([id, name]) => (
-          <option value={id}>
-            {id} · {name}
-          </option>
-        ))}
-      </select>
-    </label>
-    <label>
-      Casa
-      <select id="chamber">
-        <option value="">Todas</option>
-        <option value="camara">Câmara</option>
-        <option value="senado">Senado</option>
-      </select>
-    </label>
-    <label>
-      Modo
-      <select id="mode">
-        <option value="">Todos</option>
-        <option value="with_context">Com contexto</option>
-        <option value="closed_book">Sem contexto</option>
-        <option value="tools">Com ferramentas</option>
-      </select>
-    </label>
-    <label>
-      Modelo
-      <select id="weights">
-        <option value="">Todos</option>
-        <option value="open">Pesos abertos</option>
-        <option value="closed">Pesos fechados</option>
-        <option value="brazilian">Brasileiro</option>
-      </select>
-    </label>
-    <label>
-      Desde
-      <input id="since" type="date" />
-    </label>
-    <label>
-      Protocolo e conjunto
-      <select id="cohort">
-        <option value="">Selecionar</option>
-        {cohorts.map((c) => (
-          <option value={c}>{c.slice(0, 12)}…</option>
-        ))}
-      </select>
-    </label>
+  <div class="stat-strip" aria-label="Situação do benchmark">
+    <div>
+      <Icon name="layers" />
+      <span>
+        <strong>8</strong>
+        <small>trilhas de avaliação</small>
+      </span>
+    </div>
+    <div>
+      <Icon name="book" />
+      <span>
+        <strong>2</strong>
+        <small>casas legislativas</small>
+      </span>
+    </div>
+    <div>
+      <Icon name="chart" />
+      <span>
+        <strong>{modelCount.toLocaleString('pt-BR')}</strong>
+        <small>{baselineOnly ? 'baselines publicados' : 'modelos publicados'}</small>
+      </span>
+    </div>
+    <div>
+      <Icon name="search" />
+      <span>
+        <strong>{data.count ? data.count.toLocaleString('pt-BR') : '—'}</strong>
+        <small>{data.count ? 'itens públicos exportados' : 'itens aguardando exportação'}</small>
+      </span>
+    </div>
   </div>
-  {data.results.length === 0 ? (
-    <div class="empty">
-      <h2>Avaliações ainda não publicadas</h2>
-      <p>
-        O benchmark está preparado para receber resultados. As primeiras notas aparecerão aqui
-        depois de uma execução documentada.
-      </p>
-      <a class="button" href={`${base}contribuir/`}>
-        Como submeter um resultado
+  <section id="comparar" class="comparison-section" data-reveal>
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">01 / Resultados</p>
+        <h2>Compare a mesma pergunta.</h2>
+        <p>Escolha um recorte. Veja a nota, a incerteza e a cobertura de cada execução.</p>
+      </div>
+      <a class="text-link" href={`${base}metodologia/`}>
+        Como ler as métricas <Icon name="arrow" size={16} />
       </a>
     </div>
-  ) : (
-    <div class="table-wrap" tabindex="0" role="region" aria-label="Comparação por trilha">
-      <table id="leaderboard">
-        <caption class="mono">Resultados por tarefa; compare o mesmo protocolo e conjunto.</caption>
-        <thead>
-          <tr>
-            <th scope="col">Modelo</th>
-            <th scope="col">Trilha / tarefa</th>
-            <th scope="col">Casa / modo</th>
-            <th scope="col">Nota e IC 95%</th>
-            <th scope="col">Cobertura</th>
-            <th scope="col">Verificação</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.results.flatMap((r) =>
-            r.metrics
-              .filter((m) => m.score && m.category !== 'experimental')
-              .map((m) => (
+    {baselineOnly && (
+      <div class="notice">
+        <Icon name="info" />
+        <p>
+          <strong>Primeiro, as referências.</strong> Os resultados publicados são baselines
+          determinísticos. Avaliações de modelos de linguagem ainda não foram publicadas.
+        </p>
+        <a href={`${base}contribuir/`}>Submeter avaliação ↗</a>
+      </div>
+    )}
+    {data.results.length ? (
+      <div class="comparison-panel">
+        <div class="comparison-toolbar">
+          <div class="segmented" role="group" aria-label="Visualização dos resultados">
+            <button data-view="table" aria-pressed="true">
+              <Icon name="layers" size={16} /> Tabela
+            </button>
+            <button data-view="chart" aria-pressed="false">
+              <Icon name="chart" size={16} /> Gráfico
+            </button>
+          </div>
+          <div class="toolbar-actions">
+            <button id="reset-filters" class="ghost">
+              <Icon name="reset" size={16} /> Limpar filtros
+            </button>
+            <button id="export-results" class="ghost">
+              <Icon name="download" size={16} /> CSV
+            </button>
+          </div>
+        </div>
+        <div class="filters benchmark-filters">
+          <label>
+            Trilha
+            <select id="track">
+              <option value="">Todas</option>
+              {tracks.map(([id, name]) => (
+                <option value={id} selected={id === first?.m.track}>
+                  {id} · {name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Tarefa
+            <select id="task">
+              <option value="">Todas</option>
+              {tasks.map((task) => (
+                <option value={task} selected={task === first?.m.task}>
+                  {taskNames[task] || task}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Casa
+            <select id="chamber">
+              <option value="">Todas</option>
+              <option value="camara" selected={first?.m.chamber === 'camara'}>
+                Câmara
+              </option>
+              <option value="senado" selected={first?.m.chamber === 'senado'}>
+                Senado
+              </option>
+            </select>
+          </label>
+          <label>
+            Modo
+            <select id="mode">
+              <option value="">Todos</option>
+              {Object.entries(modeNames).map(([id, name]) => (
+                <option value={id} selected={id === first?.m.mode}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <details class="advanced-filters">
+            <summary>
+              Mais filtros <span aria-hidden="true">+</span>
+            </summary>
+            <div class="filters">
+              <label>
+                Modelo
+                <select id="weights">
+                  <option value="">Todos</option>
+                  <option value="open">Pesos abertos</option>
+                  <option value="closed">Pesos fechados</option>
+                  <option value="brazilian">Brasileiro</option>
+                </select>
+              </label>
+              <label>
+                Desde
+                <input id="since" type="date" />
+              </label>
+              <label>
+                Conjunto e protocolo
+                <select id="cohort">
+                  {cohorts.map((c) => (
+                    <option value={c}>
+                      {c
+                        .split(':')
+                        .map((h) => h.slice(0, 8))
+                        .join(' / ')}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Divisão
+                <select id="split">
+                  <option value="">Todas</option>
+                  {splits.map((s) => (
+                    <option value={s} selected={s === first?.m.split}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Qualidade temporal
+                <select id="temporal">
+                  <option value="">Todas</option>
+                  {temporal.map((t) => (
+                    <option value={t} selected={t === first?.m.temporal_quality}>
+                      {t === 'retrospective'
+                        ? 'Retrospectivo'
+                        : t === 'not_applicable'
+                          ? 'Não se aplica'
+                          : t || 'Não informada'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </details>
+        </div>
+        <div class="result-meta">
+          <p id="filter-status" role="status"></p>
+          <span class="mono">IC 95% · bootstrap por família</span>
+        </div>
+        <p id="comparison-warning" class="notice" hidden>
+          Este recorte reúne tarefas ou condições diferentes. Leia cada resultado separadamente; as
+          notas não formam um ranking único.
+        </p>
+        <div
+          class="table-wrap"
+          id="table-view"
+          tabindex="0"
+          role="region"
+          aria-label="Comparação por trilha"
+        >
+          <p class="table-scroll-hint">
+            Deslize a tabela para ver as notas, a cobertura e a verificação →
+          </p>
+          <table id="leaderboard">
+            <caption class="sr-only">
+              Resultados por tarefa, com intervalo de confiança de 95%. Compare o mesmo protocolo e
+              conjunto.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Modelo / referência</th>
+                <th scope="col">Trilha / tarefa</th>
+                <th scope="col">Casa / modo</th>
+                <th scope="col" aria-sort="descending">
+                  <button class="sort-button" id="sort-score" aria-label="Ordenar por nota">
+                    Nota e IC 95%{' '}
+                    <span id="sort-indicator" aria-hidden="true">
+                      ↓
+                    </span>
+                  </button>
+                </th>
+                <th scope="col">Cobertura</th>
+                <th scope="col">Verificação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {metrics.map(({ r, m }) => (
                 <tr
+                  hidden={
+                    !!first &&
+                    (m.track !== first.m.track ||
+                      m.task !== first.m.task ||
+                      m.chamber !== first.m.chamber ||
+                      m.mode !== first.m.mode ||
+                      m.split !== first.m.split ||
+                      m.temporal_quality !== first.m.temporal_quality ||
+                      `${r.dataset_hash}:${r.protocol_hash}` !== cohorts[0])
+                  }
                   data-track={m.track}
+                  data-task={m.task}
                   data-chamber={m.chamber}
                   data-mode={m.mode}
+                  data-split={m.split}
+                  data-temporal={m.temporal_quality}
                   data-cohort={`${r.dataset_hash}:${r.protocol_hash}`}
                   data-open={String(r.config.open_weights ?? '')}
                   data-brazilian={String(r.config.brazilian ?? '')}
                   data-date={r.created_at.slice(0, 10)}
+                  data-score={m.score!.mean}
+                  data-low={m.score!.ci95[0]}
+                  data-high={m.score!.ci95[1]}
+                  data-model={r.model}
                 >
                   <td>
-                    <a href={`${base}modelos/${slug(r.model)}/`}>{r.model}</a>
+                    <a class="model-link" href={`${base}modelos/${slug(r.model)}/`}>
+                      <span class="model-symbol">
+                        <Icon name="code" size={16} />
+                      </span>
+                      {modelName(r.model)}
+                      <span class="row-arrow" aria-hidden="true">
+                        ↗
+                      </span>
+                    </a>
+                    <small>
+                      {r.model.startsWith('baseline/')
+                        ? 'Baseline determinístico'
+                        : 'Modelo de linguagem'}
+                    </small>
                   </td>
                   <td>
-                    {m.track} · {taskNames[m.task] || m.task}
-                    <br />
+                    <span class="track-code">{m.track}</span> {taskNames[m.task] || m.task}
                     <small>
                       {m.split}
                       {m.temporal_quality === 'retrospective' && ' · retrospectivo'}
@@ -136,76 +391,203 @@ const cohorts = [...new Set(data.results.map((r) => `${r.dataset_hash}:${r.proto
                   </td>
                   <td>
                     {chamberNames[m.chamber || ''] || m.chamber}
-                    <br />
                     <small>{modeNames[m.mode || ''] || m.mode}</small>
                   </td>
                   <td>
-                    {(m.score!.mean * 100).toFixed(1)}%<br />
-                    <small>{m.score!.ci95.map((n) => (n * 100).toFixed(1)).join('–')}%</small>
+                    <strong class="score-number">
+                      {(m.score!.mean * 100).toLocaleString('pt-BR', {
+                        maximumFractionDigits: 1,
+                        minimumFractionDigits: 1,
+                      })}
+                      %
+                    </strong>
+                    <div class="score-bar" aria-hidden="true">
+                      <span style={`width:${m.score!.mean * 100}%`}></span>
+                    </div>
+                    <small>
+                      {m.score!.ci95.map((n) => (n * 100).toFixed(1).replace('.', ',')).join(' a ')}
+                      %
+                    </small>
                   </td>
                   <td>
-                    {(r.usage.coverage * 100).toFixed(1)}%{!r.complete && ' · incompleto'}
+                    <strong>{(r.usage.coverage * 100).toFixed(1).replace('.', ',')}%</strong>
+                    <small>{r.complete ? 'Execução completa' : 'Execução incompleta'}</small>
                   </td>
                   <td>
                     <span class="badge">{r.verification}</span>
                   </td>
                 </tr>
-              )),
-          )}
-        </tbody>
-      </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div id="chart-view" class="chart-view" hidden>
+          <p class="chart-explanation">
+            O ponto marca a nota. A linha marca o intervalo de confiança de 95%.
+          </p>
+          <div id="score-chart"></div>
+          <div class="chart-axis">
+            <span>0%</span>
+            <span>50%</span>
+            <span>100%</span>
+          </div>
+        </div>
+        <div id="filter-empty" class="empty" hidden>
+          <Icon name="search" size={32} />
+          <h3>Nenhum resultado neste recorte</h3>
+          <p>Altere a tarefa ou amplie os filtros para consultar as execuções publicadas.</p>
+          <button class="outline" id="empty-reset">
+            Mostrar todos os resultados
+          </button>
+        </div>
+        <div class="panel-footnote">
+          <Icon name="info" size={16} />
+          <span>
+            A cobertura registra respostas recebidas. A verificação indica como o resultado foi
+            conferido.
+          </span>
+        </div>
+      </div>
+    ) : (
+      <div class="empty">
+        <Icon name="chart" size={32} />
+        <h3>Avaliações ainda não publicadas</h3>
+        <p>As notas aparecerão depois de uma execução documentada.</p>
+        <a class="button" href={`${base}contribuir/`}>
+          Como submeter um resultado <Icon name="arrow" />
+        </a>
+      </div>
+    )}
+  </section>
+  <section id="trilhas" class="tracks-section" data-reveal>
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">02 / O que medimos</p>
+        <h2>Uma capacidade por vez.</h2>
+        <p>Oito trilhas para separar acertos, limites e perguntas ainda sem resposta.</p>
+      </div>
+      <div class="track-controls segmented" role="group" aria-label="Filtrar trilhas">
+        <button data-track-group="all" aria-pressed="true">
+          Todas
+        </button>
+        <button data-track-group="understand" aria-pressed="false">
+          Compreensão
+        </button>
+        <button data-track-group="other" aria-pressed="false">
+          Outras capacidades
+        </button>
+      </div>
     </div>
-  )}
-  <p id="filter-status" role="status"></p>
-  <h2>O que cada trilha mede</h2>
-  <div class="track-grid">
-    {tracks.map(([id, name, description]) => (
-      <article class="track">
-        <span>{id}</span>
-        <h3>{name}</h3>
-        <p>{description}</p>
-      </article>
-    ))}
-  </div>
-  <p>
-    <a href={`${base}metodologia/`}>Leia o protocolo antes de interpretar as notas →</a>
-  </p>
+    <div class="track-grid">
+      {tracks.map(([id, name, description], index) => (
+        <article
+          class="track"
+          id={`trilha-${id}`}
+          data-track-category={index < 4 ? 'understand' : 'other'}
+        >
+          <div class="track-top">
+            <span class="track-code">{id}</span>
+            <Icon
+              name={['book', 'layers', 'chart', 'arrow', 'chart', 'check', 'code', 'layers'][index]}
+              size={24}
+            />
+          </div>
+          <h3>{name}</h3>
+          <p>{description}</p>
+          <details>
+            <summary>
+              O que observar <span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              {
+                [
+                  'O modelo identifica tipos de proposição, autoria e referências que aparecem no texto? A informação ausente também precisa ser reconhecida.',
+                  'A resposta aplica o procedimento e o quórum corretos? A regra precisa ter vigência documentada para o caso avaliado.',
+                  'A contagem corresponde ao registro oficial? Placar e votos individuais só são avaliados quando publicados pela fonte.',
+                  'O modelo reconstrói a ordem dos órgãos e as mudanças de tramitação a partir do histórico apresentado?',
+                  'As probabilidades respeitam o corte temporal? Casos retrospectivos não demonstram previsão de eventos futuros.',
+                  'A fonte citada existe e sustenta a afirmação? Localizar um trecho não substitui a revisão humana da fidelidade.',
+                  'O modelo consulta uma API congelada e usa a resposta corretamente? O ambiente deve ser o mesmo entre execuções.',
+                  'A resposta muda entre cenários pareados? A diferença é examinada separadamente, sem compor uma nota geral.',
+                ][index]
+              }
+            </p>
+            <a href={`${base}explorador/?track=${id}`}>Explorar itens desta trilha →</a>
+          </details>
+        </article>
+      ))}
+    </div>
+  </section>
+  <section class="tagline-section">
+    <p class="eyebrow">O princípio do Teor</p>
+    <h2 class="tagline">
+      {'Responder bem é uma coisa.'.split(' ').map((word, i) => (
+        <span style={`--word-delay:${i * 45}ms`}>{word} </span>
+      ))}
+      <br />
+      {'Sustentar a resposta é outra.'.split(' ').map((word, i) => (
+        <span style={`--word-delay:${(i + 5) * 45}ms`}>{word} </span>
+      ))}
+    </h2>
+    <p>Por isso, nenhuma nota vem sozinha. Ela vem com tarefa, protocolo, cobertura e evidência.</p>
+  </section>
+  <section class="participate-section" data-reveal>
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">03 / Entre no experimento</p>
+        <h2>Confira por conta própria.</h2>
+      </div>
+    </div>
+    <div class="action-grid">
+      <a class="action-card" href={`${base}quiz/`}>
+        <Icon name="quiz" size={32} />
+        <h3>Teste você</h3>
+        <p>Responda aos itens públicos e confira o gabarito com a fonte oficial.</p>
+        <span class="text-link">
+          Começar o quiz <Icon name="arrow" />
+        </span>
+      </a>
+      <a class="action-card" href={`${base}explorador/`}>
+        <Icon name="search" size={32} />
+        <h3>Abra a pergunta</h3>
+        <p>Consulte contexto, resposta esperada e evidências de cada item.</p>
+        <span class="text-link">
+          Explorar o conjunto <Icon name="arrow" />
+        </span>
+      </a>
+      <a class="action-card" href={`${base}contribuir/`}>
+        <Icon name="code" size={32} />
+        <h3>Avalie um modelo</h3>
+        <p>Execute o protocolo e envie resultados que outras pessoas possam reproduzir.</p>
+        <span class="text-link">
+          Preparar uma submissão <Icon name="arrow" />
+        </span>
+      </a>
+    </div>
+  </section>
+  <section class="faq-section" data-reveal>
+    <div>
+      <p class="eyebrow">Antes de concluir</p>
+      <h2>
+        O que a nota
+        <br />
+        não diz sozinha.
+      </h2>
+      <a class="text-link" href={`${base}metodologia/`}>
+        Ler a metodologia <Icon name="arrow" />
+      </a>
+    </div>
+    <div>
+      {faqs.map(([question, answer]) => (
+        <details>
+          <summary>
+            {question}
+            <span aria-hidden="true">+</span>
+          </summary>
+          <p>{answer}</p>
+        </details>
+      ))}
+    </div>
+  </section>
 </Layout>
-<script>
-  const ids = ['track', 'chamber', 'mode', 'weights', 'since', 'cohort'];
-  function filter() {
-    const cohort = document.getElementById('cohort') as HTMLSelectElement;
-    if (!cohort.value && cohort.options.length > 1) cohort.selectedIndex = 1;
-    const values = Object.fromEntries(
-      ids.map((id) => [
-        id,
-        (document.getElementById(id) as HTMLInputElement | HTMLSelectElement).value,
-      ]),
-    );
-    let visible = 0;
-    document.querySelectorAll<HTMLTableRowElement>('#leaderboard tbody tr').forEach((row) => {
-      const d = row.dataset;
-      const show =
-        (!values.track || values.track === d.track) &&
-        (!values.chamber || values.chamber === d.chamber) &&
-        (!values.mode || values.mode === d.mode) &&
-        (!values.cohort || values.cohort === d.cohort) &&
-        (!values.since || String(d.date) >= values.since) &&
-        (!values.weights ||
-          (values.weights === 'open' && d.open === 'true') ||
-          (values.weights === 'closed' && d.open === 'false') ||
-          (values.weights === 'brazilian' && d.brazilian === 'true'));
-      row.hidden = !show;
-      if (show) visible++;
-    });
-    document.getElementById('filter-status')!.textContent = visible
-      ? `${visible} resultados exibidos.`
-      : '';
-  }
-  ids.forEach((id) => document.getElementById(id)?.addEventListener('change', filter));
-  const cohort = document.getElementById('cohort') as HTMLSelectElement;
-  if (cohort.options.length > 1) {
-    cohort.selectedIndex = 1;
-    filter();
-  }
-</script>
+<script src="../scripts/benchmark.ts"></script>

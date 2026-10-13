@@ -4,12 +4,15 @@ import '@fontsource/public-sans/600.css';
 import '@fontsource/newsreader/500.css';
 import '@fontsource/space-mono/400.css';
 import '../styles/global.css';
-const { title, description = 'Benchmark aberto de LLMs para o processo legislativo brasileiro.' } =
-  Astro.props;
+import Icon from '../components/Icon.astro';
+const {
+  title,
+  description = 'Benchmark aberto de modelos de linguagem sobre textos, regras e votações do Legislativo brasileiro. Compare tarefas, consulte fontes e teste suas respostas.',
+} = Astro.props;
 const base = import.meta.env.BASE_URL;
 const links = [
-  ['', 'Leaderboard'],
-  ['explorador/', 'Itens'],
+  ['', 'Comparar'],
+  ['explorador/', 'Explorar itens'],
   ['quiz/', 'Teste você'],
   ['analises/', 'Análises'],
   ['rodadas/', 'Rodadas'],
@@ -31,47 +34,138 @@ const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="pt_BR" />
-    <meta name="theme-color" content="#1b6d24" />
-    <link rel="icon" type="image/svg+xml" href={`${base}logo.svg`} />
+    <meta property="og:image" content={new URL(`${base}og.png`, Astro.site)} />
+    <meta property="og:image:alt" content="Como Votam, o retrato legislativo brasileiro" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#f9f9fb" />
+    <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
     {umami && umamiId && <script is:inline defer src={umami} data-website-id={umamiId}></script>}
   </head>
   <body>
     <a class="skip" href="#conteudo">
       Ir para o conteúdo
     </a>
-    <header>
-      <a class="wordmark" href={base}>
-        teor<span>por Como Votam</span>
-      </a>
-      <nav aria-label="Principal">
-        {links.map(([href, label]) => (
-          <a
-            href={`${base}${href}`}
-            aria-current={Astro.url.pathname === `${base}${href}` ? 'page' : undefined}
-          >
-            {label}
-          </a>
-        ))}
-      </nav>
-      <a class="repo" href="https://github.com/como-votam/teor">
-        Código ↗
-      </a>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="wordmark" href={base} aria-label="Teor, página inicial">
+          <img src={`${base}brand.svg`} width="32" height="36" alt="" />
+          <span>
+            teor<span class="brand-by">por Como Votam</span>
+          </span>
+        </a>
+        <nav id="main-nav" aria-label="Principal">
+          {links.map(([href, label]) => (
+            <a
+              href={`${base}${href}`}
+              aria-current={
+                (
+                  href
+                    ? Astro.url.pathname.startsWith(`${base}${href}`)
+                    : Astro.url.pathname === base
+                )
+                  ? 'page'
+                  : undefined
+              }
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
+        <a
+          class="repo"
+          aria-label="Código aberto do Teor no GitHub"
+          href="https://github.com/como-votam/teor"
+        >
+          <Icon name="code" />
+          <span>Código aberto</span>
+        </a>
+        <button
+          class="menu-toggle ghost"
+          aria-expanded="false"
+          aria-controls="main-nav"
+          aria-label="Abrir navegação"
+        >
+          <span></span>
+          <span></span>
+        </button>
+      </div>
     </header>
     <main id="conteudo">
       <slot />
     </main>
-    <footer>
-      <div>
-        <img src={`${base}logo.svg`} width="24" height="28" alt="" /> <strong>Teor</strong> por{' '}
-        <a href="https://comovotam.com.br">Como Votam</a>
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <a class="wordmark" href={base}>
+            <img src={`${base}brand.svg`} width="32" height="36" alt="" />
+            <span>
+              teor<span class="brand-by">por Como Votam</span>
+            </span>
+          </a>
+          <p>
+            O que a IA sabe sobre o Legislativo?
+            <br />
+            Um benchmark para conferir a resposta.
+          </p>
+          <a class="text-link" href="https://comovotam.com.br">
+            Conheça o Como Votam <Icon name="external" size={16} />
+          </a>
+        </div>
+        <nav aria-label="Informações">
+          <span class="eyebrow">O projeto</span>
+          <a href={`${base}dados/`}>Dados e fontes</a>
+          <a href={`${base}erratas/`}>Erratas</a>
+          <a href={`${base}contribuir/`}>Contribuir</a>
+          <a href={`${base}revisar/`}>Revisar itens</a>
+        </nav>
+        <div class="footer-note">
+          <span class="eyebrow">Pesquisa aberta</span>
+          <p>
+            Compreensão, previsão e uso de ferramentas têm métricas próprias. A evidência acompanha
+            cada resultado.
+          </p>
+          <a href="https://github.com/como-votam/teor/blob/main/LICENSE">Código sob Apache 2.0 ↗</a>
+        </div>
       </div>
-      <nav aria-label="Informações">
-        <a href={`${base}dados/`}>Dados</a>
-        <a href={`${base}erratas/`}>Erratas</a>
-        <a href={`${base}contribuir/`}>Contribuir</a>
-        <a href={`${base}revisar/`}>Revisar itens</a>
-      </nav>
-      <p>Dados oficiais. Métricas abertas. Cada afirmação com sua evidência.</p>
+      <div class="footer-bottom">
+        <span>Teor · Como Votam</span>
+        <span>Fontes oficiais. Protocolo público.</span>
+      </div>
     </footer>
+    <script>
+      const toggle = document.querySelector<HTMLButtonElement>('.menu-toggle')!;
+      const nav = document.getElementById('main-nav')!;
+      function setMenu(open: boolean) {
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.setAttribute('aria-label', open ? 'Fechar navegação' : 'Abrir navegação');
+        nav.classList.toggle('is-open', open);
+      }
+      toggle.addEventListener('click', () =>
+        setMenu(toggle.getAttribute('aria-expanded') !== 'true'),
+      );
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+          setMenu(false);
+          toggle.focus();
+        }
+      });
+      nav
+        .querySelectorAll('a')
+        .forEach((link) => link.addEventListener('click', () => setMenu(false)));
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('revealed');
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.12 },
+      );
+      document
+        .querySelectorAll('[data-reveal], .tagline span')
+        .forEach((el) => observer.observe(el));
+    </script>
   </body>
 </html>
