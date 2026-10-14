@@ -1,5 +1,5 @@
 ---
-license: other
+license: cc-by-4.0
 language:
   - pt
 task_categories:
@@ -23,9 +23,14 @@ Cada item inclui URL e identificador da fonte. O manifesto registra arquivos, ha
 
 ## Reuso
 
-O código é Apache-2.0. A proposta de licença dos itens derivados é CC-BY 4.0, condicionada aos termos de cada fonte. A existência de um portal de dados abertos não basta para atribuir uma licença específica aos documentos. Até confirmar os termos, esta card declara `license: other`; não afirma uma autorização formal ainda não documentada.
+O código é Apache-2.0. Os itens derivados (perguntas, gabaritos e estrutura criados pelo Teor) são licenciados em CC-BY 4.0. O conteúdo originado das fontes oficiais segue os termos de cada casa legislativa, descritos abaixo. Atribuição obrigatória: "Câmara dos Deputados" e "Senado Federal", com a autoria quando houver.
 
-As páginas oficiais consultadas descrevem acesso público, mas não resolvem por si só todos os direitos sobre documentos associados. Registre a confirmação em `config/source-terms.json` antes de publicar o dataset. Assets da marca têm autorização específica para este projeto, não uma licença geral sobre a marca.
+## Termos das fontes (revisados em 2026-10-14)
+
+- **Câmara dos Deputados:** [Termos gerais](https://www2.camara.leg.br/termo-de-uso-e-politica-de-privacidade/termos-gerais): "Todas as informações publicadas no Portal da Câmara são de domínio público, gratuitas e podem ser reproduzidas desde que citada a fonte 'Câmara dos Deputados' e a autoria da informação, quando houver." Não há licença formal específica para a API de dados abertos.
+- **Senado Federal:** [Política de uso do portal](https://www12.senado.leg.br/institucional/documentos/politica-de-uso-do-portal-do-senado-federal): "Todo o conteúdo deste Portal é de propriedade autoral do Senado Federal, mas pode ser utilizado pelos usuários, desde que seja citada a fonte e para fins lícitos." Pelo [Sobre Dados Abertos](https://www12.senado.leg.br/dados-abertos/sobre), exige-se no máximo citar a proveniência. Não há licença formal específica.
+
+Nenhuma das duas casas declara licença Creative Commons. Não afirmamos que as fontes são CC-BY.
 
 ## Conteúdo e limitações
 

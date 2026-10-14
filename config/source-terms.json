@@ -1,1 +1,20 @@
-{"camara":{"url":"https://dadosabertos.camara.leg.br/","status":"pending_confirmation","derived_license":"CC-BY-4.0 proposta, condicionada aos termos"},"senado":{"url":"https://www12.senado.leg.br/dados-abertos","status":"pending_confirmation","derived_license":"CC-BY-4.0 proposta, condicionada aos termos"},"brand":{"status":"authorized_for_teor_by_owner","redistribution":"sem autorização geral de uso da marca"}}
+{
+  "camara": {
+    "url": "https://dadosabertos.camara.leg.br/",
+    "status": "terms_reviewed_2026-10-14",
+    "derived_license": "CC-BY-4.0 apenas para o trabalho original do Teor; conteúdo das fontes segue os termos de cada casa",
+    "terms_url": "https://www2.camara.leg.br/termo-de-uso-e-politica-de-privacidade/termos-gerais",
+    "terms_summary": "Informações do portal são de domínio público, gratuitas e podem ser reproduzidas desde que citada a fonte 'Câmara dos Deputados' e a autoria, quando houver. Sem licença formal específica para a API de dados abertos."
+  },
+  "senado": {
+    "url": "https://www12.senado.leg.br/dados-abertos",
+    "status": "terms_reviewed_2026-10-14",
+    "derived_license": "CC-BY-4.0 apenas para o trabalho original do Teor; conteúdo das fontes segue os termos de cada casa",
+    "terms_url": "https://www12.senado.leg.br/institucional/documentos/politica-de-uso-do-portal-do-senado-federal",
+    "terms_summary": "Conteúdo é de propriedade autoral do Senado Federal, mas pode ser utilizado desde que citada a fonte e para fins lícitos. Dados abertos: exige-se, no máximo, citar a proveniência. Sem licença formal específica."
+  },
+  "brand": {
+    "status": "authorized_for_teor_by_owner",
+    "redistribution": "sem autorização geral de uso da marca"
+  }
+}
