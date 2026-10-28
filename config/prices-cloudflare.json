@@ -1,0 +1,18 @@
+{
+ "as_of": "2026-10-26",
+ "source": "https://developers.cloudflare.com/workers-ai/platform/pricing/",
+ "neurons_per_million": {
+  "cloudflare/@cf/ibm-granite/granite-4.0-h-micro": {"input": 1542, "output": 10158}
+ },
+ "models": {
+  "cloudflare/@cf/ibm-granite/granite-4.0-h-micro": {
+   "input_per_million": 0.017,
+   "output_per_million": 0.112,
+   "max_input_tokens": 40000,
+   "supports_temperature": true,
+   "structured_output": true,
+   "batch": false,
+   "region": "global"
+  }
+ }
+}
