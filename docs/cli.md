@@ -16,6 +16,8 @@ teor score data/benchmark/test-lite.jsonl data/previsoes.jsonl --output reports/
 teor report reports/modelo.json
 ```
 
+`teor run` começa por um **preflight**: um item de cada formato (trilha × tipo de resposta), três variantes cada, ~40 chamadas. Se mais de 15% das respostas vierem fora do formato (`--preflight-max-invalid`), o comando aborta mostrando exemplos brutos e não executa o run completo. `--preflight-only` roda só essa verificação; `--no-preflight` a desliga. Todo run grava também `SAIDA.raw.jsonl` com o texto bruto de cada resposta, para reavaliar sem repetir chamadas pagas.
+
 Preços são valores por milhão de tokens e precisam de data. O limite de entrada é conservador: bytes UTF-8 limitam o pior caso de tokenização. A reserva usa esse teto, saída máxima e número de chamadas. Não configura limites de faturamento na conta do provedor.
 
 `baseline` exige exemplos `dev` para classe majoritária e recuperação. Não usa respostas do teste para ajustar o baseline. `serve` abre somente a projeção pública do snapshot; `--cutoff` restringe dados anteriores ao corte.
