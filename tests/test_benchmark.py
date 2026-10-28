@@ -117,6 +117,12 @@ def test_parse_rejects_ambiguous_output():
     assert parse_response('{"abstain":"true"}')[2] == "invalid"
     assert parse_response("187")[2] == "invalid"
     assert parse_response("```json\n{}\n```")[2] == "invalid"
+    assert parse_response('```json\n{"value":["a"],"abstain":false}\n```') == (["a"], False, "ok")
+    assert parse_response('Claro! {"value": 3} fim') == (3, False, "ok")
+    assert parse_response('{"valor":["a"],"abstencao":false}') == (["a"], False, "ok")
+    assert parse_response('{"value":1,"valor":2}')[2] == "invalid"
+    assert parse_response('{"value":1,"extra":2}')[2] == "invalid"
+    assert parse_response('{"value":[1,2')[2] == "invalid"
 
 
 def test_bootstrap_clustered_and_repeatable():

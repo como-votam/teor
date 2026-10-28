@@ -22,6 +22,9 @@ PROTOCOL = {
     "invalid_score": 0,
     "infrastructure": "excluded_and_incomplete",
     "normalization": "NFKC-casefold-whitespace",
+    # Formato do prompt e do parser: mudar qualquer um invalida a comparação com resultados antigos.
+    "prompt_format": "value-abstain-hints-v2",
+    "parser": "tolerant-v1",
 }
 
 
@@ -29,11 +32,48 @@ def normalize(value: Any) -> str:
     return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", str(value)).casefold()).strip()
 
 
+FENCE = re.compile(r"```[A-Za-z0-9_-]*[ \t]*\n?(.*?)\n?[ \t]*```", re.S)
+# Só tradução literal das duas chaves do schema; qualquer outra chave continua inválida.
+KEY_ALIASES = {
+    "value": "value",
+    "valor": "value",
+    "resposta": "value",
+    "answer": "value",
+    "abstain": "abstain",
+    "abstencao": "abstain",
+    "abstenção": "abstain",
+    "abstencoes": "abstain",
+    "abstenha_se": "abstain",
+}
+
+
+def extract_object(raw: str) -> Any:
+    """Tira ruído de formato (cerca markdown, texto em volta) sem alterar o conteúdo."""
+    text = raw.strip()
+    fenced = FENCE.search(text)
+    if fenced:
+        text = fenced.group(1).strip()
+    try:
+        return json.loads(text)
+    except ValueError:
+        start = text.find("{")
+        if start < 0:
+            raise
+        value, _ = json.JSONDecoder().raw_decode(text[start:])
+        return value
+
+
 def parse_response(raw: str) -> tuple[Any, bool, PredictionStatus]:
     try:
-        value = json.loads(raw)
-        if not isinstance(value, dict) or set(value) - {"value", "abstain"}:
+        parsed = extract_object(raw)
+        if not isinstance(parsed, dict):
             return None, False, "invalid"
+        value: dict[str, Any] = {}
+        for key, item in parsed.items():
+            canonical_key = KEY_ALIASES.get(str(key).strip().casefold())
+            if canonical_key is None or canonical_key in value:
+                return None, False, "invalid"
+            value[canonical_key] = item
         abstain = value.get("abstain", False)
         if not isinstance(abstain, bool) or (not abstain and "value" not in value):
             return None, False, "invalid"
