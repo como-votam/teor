@@ -158,3 +158,32 @@ def test_inspect_tool_round_trip(items, tmp_path, monkeypatch):
     )
     assert len(requested) == 3
     assert all(p.status == "ok" and p.response == 1 and p.tool_calls == 1 for p in result)
+
+
+def test_prompt_declares_value_format_without_leaking_answer(items):
+    from teor.runner import FORMAT_HINTS, SYSTEM, request_prompt
+
+    assert '"value"' in SYSTEM and '"abstain"' in SYSTEM
+    for item in items:
+        prompt = request_prompt(item, 0)
+        assert FORMAT_HINTS[item.answer.type] in prompt
+        assert ("snapshot_record" in prompt) == (item.track == "G")
+    item = next(i for i in items if i.answer.type == "integer")
+    assert "Formato da resposta" in request_prompt(item, 0)
+
+
+def test_preflight_covers_each_format_once_and_skips_tools(items):
+    from teor.runner import preflight_items
+
+    chosen = preflight_items(items)
+    keys = [(i.track, i.answer.type) for i in chosen]
+    assert len(keys) == len(set(keys))
+    assert all(i.track != "G" and i.answerable for i in chosen)
+
+
+def test_record_id_is_extracted_from_pasted_json_block():
+    from teor.runner import clean_record_id
+
+    assert clean_record_id('{\n  "record_id": "senado:votacao:7104"\n}') == "senado:votacao:7104"
+    assert clean_record_id(" camara:proposicao:1\n") == "camara:proposicao:1"
+    assert clean_record_id("{quebrado") == "{quebrado"
