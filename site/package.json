@@ -19,7 +19,7 @@
     "@fontsource/newsreader": "^5.2.0",
     "@fontsource/public-sans": "^5.2.0",
     "@fontsource/space-mono": "^5.2.0",
-    "astro": "^7.3.8"
+    "astro": "^7.4.2"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.4",
