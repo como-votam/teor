@@ -29,3 +29,7 @@ Preços são valores por milhão de tokens e precisam de data. O limite de entra
 ## Configuração remota
 
 `github audit` lê apenas `como-votam/teor`. `github apply` aplica configurações idempotentes e salva relatório antes/depois. Falhas de disponibilidade e dependências do primeiro push aparecem como pendências, sem criação de conteúdo remoto.
+
+## Agentes de código
+
+`agent prepare` gera prompts sem gabarito; `agent run` executa Claude Code, Codex ou Cursor sobre eles com isolamento e atestado. Ver [agentes](agentes.md).

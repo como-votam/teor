@@ -3,6 +3,7 @@
 import asyncio
 from datetime import date, datetime
 from pathlib import Path
+from typing import Annotated
 
 import typer
 
@@ -24,7 +25,8 @@ app = typer.Typer(
     site_app,
     github_app,
     calibration_app,
-) = [typer.Typer(no_args_is_help=True) for _ in range(8)]
+    agent_app,
+) = [typer.Typer(no_args_is_help=True) for _ in range(9)]
 for name, group in (
     ("snapshot", snapshot_app),
     ("batch", batch_app),
@@ -34,6 +36,7 @@ for name, group in (
     ("site", site_app),
     ("github", github_app),
     ("calibration", calibration_app),
+    ("agent", agent_app),
 ):
     app.add_typer(group, name=name)
 
@@ -229,6 +232,81 @@ def run_command(
         )
     )
     typer.echo(f"{len(values)} previsões gravadas")
+
+
+@agent_app.command("prepare")
+def agent_prepare(items: Path, output: Path = Path("data/agent-prompts.jsonl")) -> None:
+    """Gera os prompts sem gabarito: é o único arquivo que a máquina do agente precisa."""
+    from teor.agents import prompt_rows
+
+    rows = prompt_rows(load_items(items))
+    write_jsonl(output, rows)
+    typer.echo(f"{len(rows)} prompts em {output}")
+
+
+@agent_app.command("run")
+def agent_run(
+    prompts: Path,
+    agent: str,
+    model: str,
+    budget: float,
+    output: Path = Path("data/agent-predictions.jsonl"),
+    isolation: str = typer.Option("workdir", help="workdir | sandbox-exec | external"),
+    api_url: str | None = None,
+    concurrency: int = 1,
+    timeout: int = 300,
+    deny_read: Annotated[
+        list[Path] | None, typer.Option(help="Caminhos extras com leitura negada")
+    ] = None,
+    prices: Annotated[Path | None, typer.Option(help="JSON com input/output por milhão")] = None,
+    max_calls: int | None = None,
+    preflight: bool = True,
+    preflight_max_invalid: float = 0.15,
+    preflight_only: bool = False,
+) -> None:
+    """Roda um agente de código (claude, codex, cursor) sobre os prompts, um processo por chamada."""
+    from teor.agents import agent_config, load_prompts, preflight_rows, run_agent
+
+    if budget <= 0 or concurrency < 1:
+        raise typer.BadParameter("Orçamento e concorrência devem ser positivos")
+    rows = load_prompts(prompts)
+    price = read_json(prices) if prices else None
+    options = dict(
+        isolation=isolation,
+        api_url=api_url,
+        concurrency=concurrency,
+        timeout=timeout,
+        deny_read=deny_read or [],
+        price=price,
+    )
+    try:
+        if preflight or preflight_only:
+            sample = preflight_rows(rows)
+            done = run_agent(
+                sample,
+                agent,
+                model,
+                output.with_name(output.stem + ".preflight.jsonl"),
+                budget,
+                **options,
+            )
+            invalid = [p for p in done if p.status != "ok"]
+            rate = len(invalid) / max(len(done), 1)
+            typer.echo(f"Preflight: {len(invalid)}/{len(done)} fora do formato ({rate:.0%})")
+            if rate > preflight_max_invalid:
+                for p in invalid[:5]:
+                    typer.echo(f"  {p.item_id}:{p.variant} [{p.status}] {p.error or ''}", err=True)
+                raise ValueError("Preflight reprovado; nada além dele foi gasto")
+            if preflight_only:
+                return
+        values = run_agent(rows, agent, model, output, budget, max_calls=max_calls, **options)
+    except ValueError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(1) from error
+    write_json(output.with_suffix(".config.json"), agent_config(output))
+    typer.echo(
+        f"{len(values)} previsões em {output}; config em {output.with_suffix('.config.json')}"
+    )
 
 
 @app.command("serve")

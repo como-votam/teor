@@ -220,6 +220,9 @@ def validate_submission(
         round_ = Round.model_validate(read_json(round_path))
         if round_.state != "published":
             raise ValueError("Submissões públicas de rodadas ocultas exigem divulgação prévia")
+    from teor.agents import validate_agent_config
+
+    validate_agent_config(result.config)
     computed = aggregate(items, predictions, result.config)
     if reviews is not None:
         computed = attach_human_reviews(items, predictions, computed, reviews)

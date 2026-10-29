@@ -17,3 +17,5 @@ Instale as dependências com os lockfiles. Rode os testes offline antes de propo
 Não reutilize implementação, schemas, prompts ou infraestrutura de repositórios privados. Marca e logo têm autorização separada para o site.
 
 [Abrir uma issue](https://github.com/como-votam/teor/issues/new/choose) · [Ler o protocolo](https://github.com/como-votam/teor/blob/main/docs/metodologia.md)
+
+Agentes de código seguem [agentes.md](agentes.md): só submissões com isolamento `sandbox-exec` ou `external` e atestado passam na validação.
