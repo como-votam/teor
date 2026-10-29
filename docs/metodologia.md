@@ -27,7 +27,7 @@ Os templates produzem três prompts. O build ordena os registros, fixa a seed e 
 
 ## Correção
 
-Respostas usam JSON com `value` e `abstain`. Texto passa por NFKC, casefold e normalização de espaços. Não removemos acentos, pontuação ou palavras arbitrariamente. Inteiros são exatos; conjuntos usam F1. Sequências exigem ordem e repetições corretas. Resposta inválida ou erro do modelo recebe zero. Erro de infraestrutura não vira erro factual: é excluído da nota, e a execução fica incompleta.
+Respostas usam JSON com `value` e `abstain`. O prompt declara o formato de `value` para cada tipo de resposta (texto, inteiro, lista, sequência, probabilidade, afirmações) e exige as chaves em inglês; o tipo nunca revela o valor. O parser ignora só ruído de formato: cerca markdown, texto em volta do objeto e a tradução literal das duas chaves (`valor`, `resposta`, `answer`, `abstencao`). Chave extra, chave duplicada, JSON truncado e `abstain` que não seja booleano continuam inválidos. Quando o provedor suporta (`structured_output` no arquivo de preços), a geração usa um esquema JSON que só admite `value` e `abstain`. Texto passa por NFKC, casefold e normalização de espaços. Não removemos acentos, pontuação ou palavras arbitrariamente. Inteiros são exatos; conjuntos usam F1. Sequências exigem ordem e repetições corretas. Resposta inválida ou erro do modelo recebe zero. Erro de infraestrutura não vira erro factual: é excluído da nota, e a execução fica incompleta.
 
 Itens sem resposta são construídos retirando informação necessária do contexto, não supondo que a fonte pública inteira seja desconhecida. A abstenção correta conta; nas respondíveis ela recebe zero.
 

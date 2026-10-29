@@ -175,14 +175,49 @@ def run_command(
     concurrency: int = 2,
     api_url: str | None = None,
     base_url: str | None = None,
+    preflight: bool = typer.Option(
+        True,
+        help="Roda um lote mínimo de cada formato e aborta antes do run caro se o formato falhar.",
+    ),
+    preflight_max_invalid: float = 0.15,
+    preflight_only: bool = typer.Option(
+        False, help="Roda só o preflight (algumas dezenas de chamadas) e encerra."
+    ),
 ) -> None:
+    from teor.runner import preflight as run_preflight
     from teor.runner import run
 
     if budget <= 0 or concurrency < 1 or max_output < 1:
         raise typer.BadParameter("Orçamento, concorrência e saída devem ser positivos")
+    loaded = load_items(items)
+    if preflight_only:
+        preflight = True
+    if preflight:
+        try:
+            report = asyncio.run(
+                run_preflight(
+                    loaded,
+                    model,
+                    output,
+                    prices,
+                    budget,
+                    max_output,
+                    concurrency,
+                    preflight_max_invalid,
+                    base_url,
+                )
+            )
+        except ValueError as error:
+            typer.echo(str(error), err=True)
+            raise typer.Exit(1) from error
+        typer.echo(
+            f"Preflight ok: {report['invalid']}/{report['calls']} fora do formato ({report['rate']:.0%})"
+        )
+        if preflight_only:
+            return
     values = asyncio.run(
         run(
-            load_items(items),
+            loaded,
             model,
             output,
             prices,
