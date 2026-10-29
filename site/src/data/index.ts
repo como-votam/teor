@@ -91,5 +91,7 @@ export const tracks = [
   ['G', 'Ferramentas', 'Consultas a uma API congelada.'],
   ['H', 'Paridade', 'Diferenças entre cenários contrafactuais pareados.'],
 ];
-export const slug = (value: string) => encodeURIComponent(value.replaceAll('/', '--'));
+// Segmento de caminho seguro para arquivo estático: o GitHub Pages decodifica %40 e não encontra a pasta.
+export const slug = (value: string) =>
+  value.replaceAll('/', '--').replace(/[^A-Za-z0-9._-]+/g, '');
 export { taskNames, modeNames, chamberNames, modelName } from './labels';
