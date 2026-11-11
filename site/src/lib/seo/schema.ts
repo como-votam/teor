@@ -3,7 +3,7 @@ import {
   data,
   tracks,
   modelName,
-  slug,
+  modelSlug,
   taskNames,
   modeNames,
   chamberNames,
@@ -16,7 +16,7 @@ const ref = (id: string) => ({ '@id': id });
 export const benchmarkId = urls.absolute('#benchmark');
 export const datasetId = urls.absolute('dados/#dataset');
 export const runId = (r: Result) =>
-  urls.absolute(`modelos/${slug(r.model)}/#execucao-${encodeURIComponent(r.id)}`);
+  urls.absolute(`modelos/${modelSlug(r.model)}/#execucao-${encodeURIComponent(r.id)}`);
 const date = (value: string) => (Number.isFinite(Date.parse(value)) ? value : undefined);
 export function resultDataset(r: Result) {
   return {

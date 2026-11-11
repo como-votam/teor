@@ -12,6 +12,7 @@ import '@fontsource/space-mono/700.css';
 import '../styles/global.css';
 import Icon from '../components/Icon.astro';
 import Logo from '../components/Logo.astro';
+import SiteNav from '../components/SiteNav.astro';
 import { staticPages } from '../lib/seo/registry';
 import { runs } from '../data/derived';
 import { tracks } from '../data';
@@ -36,9 +37,8 @@ const base = urls.base;
 const links = [
   ['modelos/', 'Resultados'],
   ['comparar/', 'Comparar'],
-  ['explorador/', 'Itens'],
   ['trilhas/', 'Trilhas'],
-  ['quiz/', 'Quiz'],
+  ['desafio/', 'Desafio'],
 ];
 const methodLinks = {
   Entender: [
@@ -47,6 +47,9 @@ const methodLinks = {
     ['dados/', 'Dados e fontes', 'Origem, formato e condições de reuso'],
     ['rodadas/', 'Rodadas', 'Lotes novos com gabarito tardio'],
   ],
+  Explorar: [
+    ['explorador/', 'Itens e console SQL', 'Os itens públicos, com fonte'],
+  ],
   Participar: [
     ['contribuir/', 'Avaliar um modelo', 'Rodar o protocolo e submeter'],
     ['revisar/', 'Revisar itens', 'Gabaritos e fidelidade das citações'],
@@ -54,10 +57,8 @@ const methodLinks = {
     ['como-citar/', 'Como citar', 'Software, execução e fonte'],
   ],
 };
-const methodPaths = Object.values(methodLinks).flat().map(([p]) => p).concat(['analises/', 'sobre/']);
 const current = urls.relative(Astro.url.pathname) ?? '';
 const isCurrent = (href: string) => (href ? current.startsWith(href) : current === '');
-const methodActive = methodPaths.some((p) => current.startsWith(p));
 const cmdkIndex = {
   base,
   pages: staticPages.map((p) => ({ name: p.name, path: p.path, description: p.description })),
@@ -147,49 +148,7 @@ const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
     <header class="site-header">
       <div class="shell header-row">
         <Logo />
-        <nav class="nav" aria-label="Principal">
-          <span class="nav-lens" aria-hidden="true"></span>
-          {
-            links.map(([href, label]) => (
-              <a
-                class="nav-link"
-                href={`${base}${href}`}
-                aria-current={isCurrent(href) ? 'page' : undefined}
-              >
-                {label}
-              </a>
-            ))
-          }
-          <div style="position:relative;height:100%;display:flex;align-items:center">
-            <button
-              class="nav-link"
-              type="button"
-              data-menu-trigger
-              aria-expanded="false"
-              aria-controls="menu-metodo"
-              aria-current={methodActive ? 'page' : undefined}
-            >
-              Método <Icon name="caret-down" weight="regular" size={14} class="chev" />
-            </button>
-            <div class="nav-menu" id="menu-metodo" hidden>
-              <div class="nav-menu-grid">
-                {
-                  Object.entries(methodLinks).map(([group, items], g) => (
-                    <div>
-                      <p class="col-label">{group}</p>
-                      {items.map(([href, label, hint], i) => (
-                        <a class="menu-link" href={`${base}${href}`} style={`--i:${g * 4 + i}`}>
-                          <strong>{label}</strong>
-                          <span>{hint}</span>
-                        </a>
-                      ))}
-                    </div>
-                  ))
-                }
-              </div>
-            </div>
-          </div>
-        </nav>
+        <SiteNav />
         <div class="header-actions">
           <button class="cmdk-trigger" type="button" data-cmdk aria-label="Buscar (atalho: barra)">
             <Icon name="magnifying-glass" weight="regular" size={15} />
@@ -255,7 +214,7 @@ const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
           <a href={`${base}comparar/`}>Comparar execuções</a>
           <a href={`${base}explorador/`}>Itens e console SQL</a>
           <a href={`${base}trilhas/`}>Trilhas</a>
-          <a href={`${base}quiz/`}>Quiz</a>
+          <a href={`${base}desafio/`}>Desafio</a>
         </nav>
         <nav class="footer-col" aria-label="Método">
           <h2>Método</h2>
@@ -278,10 +237,6 @@ const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
         <div class="footer-bottom">
           <span>© {year} Como Votam · Código sob Apache 2.0</span>
           <nav aria-label="Arquivos para máquinas">
-            <a href={`${base}llms.txt`}>llms.txt</a>
-            <a href={`${base}resultados/index.json`}>resultados.json</a>
-            <a href={`${base}sitemap.xml`}>Sitemap</a>
-            <a href={`${base}feed.xml`}>RSS</a>
             <a href="https://comovotam.com.br/privacidade">Privacidade</a>
             <a href="https://comovotam.com.br/termos">Termos</a>
           </nav>

@@ -41,6 +41,11 @@ export function mountSegmented(root: ParentNode = document) {
       requestAnimationFrame(() => thumb.removeAttribute('data-instant'));
     }).observe(seg);
     document.fonts?.ready.then(place);
+    // Quando o código troca a opção marcada (ex.: o hemiciclo alternando sozinho), o polegar acompanha.
+    seg.addEventListener('seg-sync', () => {
+      buttons.forEach((x) => (x.tabIndex = x.getAttribute('aria-checked') === 'true' ? 0 : -1));
+      place();
+    });
   });
 }
 
@@ -235,13 +240,23 @@ export function whenSeen(el: Element, fn: () => void) {
         fn();
       }
     },
-    { threshold: 0.15 },
+    // Basta a borda do gráfico aparecer: um gráfico alto não pode exigir rolagem para começar.
+    { threshold: 0, rootMargin: '0px 0px -40px 0px' },
   );
   io.observe(el);
 }
 
+/**
+ * (Re)toca a animação de entrada dos gráficos dentro de `root`. Se o gráfico já está na tela,
+ * anima no próximo quadro; senão, quando entrar. Chamar de novo depois de redesenhar repete a animação.
+ */
 export function mountSeen(root: ParentNode = document) {
-  root.querySelectorAll<HTMLElement>('[data-seen="false"]').forEach((el) =>
-    whenSeen(el, () => (el.dataset.seen = 'true')),
-  );
+  root.querySelectorAll<HTMLElement>('[data-seen]').forEach((el) => {
+    el.dataset.seen = 'false';
+    void el.offsetWidth;
+    const r = el.getBoundingClientRect();
+    const play = () => requestAnimationFrame(() => requestAnimationFrame(() => (el.dataset.seen = 'true')));
+    if (r.top < innerHeight && r.bottom > 0) play();
+    else whenSeen(el, play);
+  });
 }

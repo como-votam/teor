@@ -150,3 +150,19 @@ export function isTyping(target: EventTarget | null) {
     (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
   );
 }
+
+/**
+ * Rola só o contêiner até o elemento, sem mexer na janela. scrollIntoView rola todos os
+ * ancestrais roláveis, inclusive a página, o que faria a tela pular ao carregar ou ao navegar.
+ */
+export function scrollWithin(container: HTMLElement, el: HTMLElement, block: 'nearest' | 'center' = 'nearest') {
+  const c = container.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  const top = r.top - c.top + container.scrollTop;
+  if (block === 'center') container.scrollTop = top - (container.clientHeight - r.height) / 2;
+  else if (r.top < c.top) container.scrollTop = top - 6;
+  else if (r.bottom > c.bottom) container.scrollTop = top + r.height - container.clientHeight + 6;
+}
+
+/** Foco sem rolar a página: o leitor de tela e o teclado vão para o campo, a tela fica onde está. */
+export const focusQuietly = (el: HTMLElement | null | undefined) => el?.focus({ preventScroll: true });

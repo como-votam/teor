@@ -46,5 +46,7 @@ export default defineConfig({
   output: 'static',
   base: urls.base,
   integrations: [docLinks()],
+  // O antigo /quiz/ virou /desafio/ (o nome "quiz" é de uma função do Como Votam).
+  redirects: { '/quiz': urls.path('desafio/') },
   vite: { optimizeDeps: { exclude: ['@duckdb/duckdb-wasm'] } },
 });

@@ -94,4 +94,29 @@ export const tracks = [
 // Segmento de caminho seguro para arquivo estático: o GitHub Pages decodifica %40 e não encontra a pasta.
 export const slug = (value: string) =>
   value.replaceAll('/', '--').replace(/[^A-Za-z0-9._-]+/g, '');
+/**
+ * URL legível de um modelo: só o nome, sem provedor nem prefixos de hospedagem
+ * ("anthropic/claude-fable-5.0" vira "claude-fable-5.0"; "baseline/bm25" vira "baseline-bm25").
+ * Se dois modelos terminarem no mesmo nome, o segundo leva o provedor na frente.
+ */
+const clean = (v: string) =>
+  v
+    .toLowerCase()
+    .replace(/^@/, '')
+    .replace(/[^a-z0-9.]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+function buildModelSlugs(models: string[]) {
+  const out = new Map<string, string>();
+  const used = new Set<string>();
+  for (const model of [...new Set(models)].sort()) {
+    const parts = model.split('/').filter(Boolean);
+    let s = model.startsWith('baseline/') ? `baseline-${clean(parts[1] || '')}` : clean(parts[parts.length - 1] || model);
+    if (used.has(s)) s = clean(`${parts[0]}-${s}`);
+    used.add(s);
+    out.set(model, s);
+  }
+  return out;
+}
+const modelSlugs = buildModelSlugs(data.results.map((r) => r.model));
+export const modelSlug = (model: string) => modelSlugs.get(model) || clean(model);
 export { taskNames, modeNames, chamberNames, modelName } from './labels';

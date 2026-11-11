@@ -1,4 +1,4 @@
-import { $, $$, h, icon, readJSON, swap, announce, pct } from './ui/core';
+import { $, $$, h, icon, readJSON, swap, announce, pct, focusQuietly } from './ui/core';
 import { normalize, quizScore } from '../lib/quiz';
 
 interface Q {
@@ -128,7 +128,7 @@ if (root) {
     };
   }
 
-  function show() {
+  function show(first = false) {
     const q = items[index];
     steps.forEach((s, i) => s.setAttribute('data-s', i < index ? tone(results[i]) : i === index ? 'now' : ''));
     $('[data-q-count]', root)!.textContent = `${index + 1} de ${items.length}`;
@@ -184,7 +184,12 @@ if (root) {
         submit();
       }
     });
-    setTimeout(() => field.focus(), 60);
+    if (!first) {
+      // Só depois de uma ação de quem responde: foca sem pular e traz o card de volta se ele saiu da tela.
+      focusQuietly(body.querySelector<HTMLElement>('#quiz-answer'));
+      const top = root!.getBoundingClientRect().top;
+      if (top < 0 || top > innerHeight * 0.6) root!.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   function verdict(q: Q, score: number, value: string, skipped: boolean) {
@@ -218,7 +223,7 @@ if (root) {
     steps.forEach((s, i) => s.setAttribute('data-s', tone(results[i])));
     const total = results.reduce((a, b) => a + b, 0);
     $('[data-q-count]', root)!.textContent = 'Resultado';
-    const share = `Fiz ${fmt(total)} de ${items.length} no quiz do Teor, o benchmark de IA sobre o Congresso.`;
+    const share = `Fiz ${fmt(total)} de ${items.length} no desafio do Teor, o benchmark de IA sobre o Congresso.`;
     const again = h('button', { type: 'button', class: 'btn' }, icon('reset', 16), 'Refazer');
     again.addEventListener('click', () => {
       results.length = 0;
@@ -227,7 +232,6 @@ if (root) {
       show();
     });
     body.replaceChildren(
-      h('p', { class: 'eyebrow' }, 'Fim'),
       h('h2', { class: 'quiz-q', tabindex: '-1', id: 'quiz-end' }, `${fmt(total)} de ${items.length} pontos.`),
       h('div', { class: 'result-dots', role: 'img', 'aria-label': results.map((r, i) => `pergunta ${i + 1}: ${fmt(r)}`).join(', ') }, ...results.map((r, i) => h('i', { 'data-s': tone(r), style: `--i:${i}` }, String(i + 1)))),
       h('p', { class: 'body', style: 'margin-top:20px' }, 'As notas dos modelos nestas tarefas estão na matriz de capacidades. Lá cada fatia vem com intervalo de confiança, coisa que dez perguntas não permitem.'),
@@ -241,8 +245,8 @@ if (root) {
     );
     swap(body);
     import('./ui/controls').then((m) => m.mountCopy(body));
-    $<HTMLElement>('#quiz-end')?.focus();
+    focusQuietly($<HTMLElement>('#quiz-end'));
   }
 
-  show();
+  show(true);
 }

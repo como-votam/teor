@@ -1,5 +1,5 @@
 // ⌘K: páginas, execuções, trilhas e os 500 itens, numa busca só.
-import { h, icon, normalize, readJSON, type IconName } from './ui/core';
+import { h, icon, normalize, readJSON, scrollWithin, type IconName } from './ui/core';
 
 interface Entry {
   title: string;
@@ -163,7 +163,7 @@ export function openPalette() {
     list.querySelectorAll('.cmdk-item').forEach((el, j) => {
       el.toggleAttribute('data-active', j === i);
       el.setAttribute('aria-selected', String(j === i));
-      if (j === i && scroll) el.scrollIntoView({ block: 'nearest' });
+      if (j === i && scroll) scrollWithin(list, el as HTMLElement);
     });
     input.setAttribute('aria-activedescendant', `cmdk-${i}`);
   }

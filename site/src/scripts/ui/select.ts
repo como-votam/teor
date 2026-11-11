@@ -1,6 +1,6 @@
 // Select próprio: botão + listbox (padrão WAI-ARIA "select-only combobox"), com busca opcional.
 // Nada de <select> nativo: o popover, o realce e o check são nossos, e o teclado faz tudo.
-import { h, icon, normalize } from './core';
+import { h, icon, normalize, scrollWithin } from './core';
 
 export interface SelectOption {
   value: string;
@@ -129,7 +129,7 @@ export function createSelect(config: SelectConfig) {
     list.querySelectorAll('.opt').forEach((el) => {
       const on = Number((el as HTMLElement).dataset.index) === i;
       el.toggleAttribute('data-active', on);
-      if (on && scroll) el.scrollIntoView({ block: 'nearest' });
+      if (on && scroll) scrollWithin(pop, el as HTMLElement);
     });
     const target = list.querySelector(`#${id}-o${i}`);
     if (target) (config.searchable ? searchInput : trigger).setAttribute('aria-activedescendant', target.id);

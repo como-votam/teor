@@ -4,14 +4,14 @@ import Breadcrumbs from '../../components/seo/Breadcrumbs.astro';
 import Icon from '../../components/Icon.astro';
 import { resultPath } from '../../lib/seo/registry';
 import { urls } from '../../lib/seo/config';
-import { data, slug, tracks } from '../../data';
+import { data, modelSlug, tracks } from '../../data';
 import { taskNames, modeNames, chamberNames } from '../../data/labels';
-import { runs, slices, liftSummary, contextPairs, strongestBaseline } from '../../data/derived';
-import { pct, pp, usd, secs, date, compact, int, shortHash } from '../../lib/format';
+import { runs, models, slices, liftSummary, contextPairs, orderingScore } from '../../data/derived';
+import { pct, pp, secs, date, compact, int, shortHash } from '../../lib/format';
 import { forestHTML, seriesColor, tipData } from '../../lib/charts';
 export function getStaticPaths() {
   return [...new Set(data.results.map((r) => r.model))].map((model) => ({
-    params: { model: slug(model) },
+    params: { model: modelSlug(model) },
     props: { model },
   }));
 }
@@ -61,25 +61,18 @@ const runViews = results.map((result) => {
 });
 const first = runViews[0];
 const run = first.run;
-const otherForCompare = run.kind === 'model' ? strongestBaseline : runs.find((r) => r.kind === 'model');
+// Para comparar, o modelo mais próximo em desempenho (nunca uma referência).
+const otherForCompare =
+  [...models]
+    .filter((m) => m.id !== run.id)
+    .sort((a, b) => Math.abs(orderingScore(a.id) - orderingScore(run.id)) - Math.abs(orderingScore(b.id) - orderingScore(run.id)))[0] || null;
 ---
 
 <Layout title={model}>
   <Breadcrumbs />
   <section class="shell page-hero">
-    <p class="eyebrow">
-      <span class={run.kind === 'baseline' ? 'swatch swatch--ref' : 'swatch'} style={`--c:${seriesColor(run.color)}`}></span>
-      {run.kind === 'baseline' ? 'Referência determinística' : 'Modelo de linguagem'}
-    </p>
     <h1 class="h-page" style="max-width:none;overflow-wrap:anywhere">{run.label}</h1>
     <p class="mono fine" style="margin-top:12px;overflow-wrap:anywhere">{model}</p>
-    <div class="ex-tags" style="margin-top:18px">
-      {run.provider && <span class="badge">{run.provider}</span>}
-      {run.openWeights === true && <span class="badge">Pesos abertos</span>}
-      <span class="badge badge--muted">Verificação: {run.verification}</span>
-      <span class="badge badge--line">{run.split}</span>
-      <span class="badge badge--line">{date(run.date)}</span>
-    </div>
     <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:26px">
       {
         otherForCompare && (
@@ -107,8 +100,8 @@ const otherForCompare = run.kind === 'model' ? strongestBaseline : runs.find((r)
             <div class="kpi-label">{lift ? 'Fatias com o IC inteiro acima da melhor referência' : 'Referências formam o piso'}</div>
           </div>
           <div class="kpi">
-            <div class="kpi-value">{usd(run.cost)}</div>
-            <div class="kpi-label">Custo informado da execução</div>
+            <div class="kpi-value">{int(run.invalid)}</div>
+            <div class="kpi-label">Respostas fora do formato, de {int(run.calls)} recebidas</div>
           </div>
           <div class="kpi">
             <div class="kpi-value">{secs(run.latency)}</div>
@@ -121,11 +114,6 @@ const otherForCompare = run.kind === 'model' ? strongestBaseline : runs.find((r)
             </div>
           </div>
         </div>
-        {run.invalid > 0 && (
-          <p class="note">
-            {int(run.invalid)} de {int(run.calls)} respostas vieram fora do formato e receberam zero, como manda o protocolo.
-          </p>
-        )}
 
         {dumbbell.length > 0 && (
           <div class="panel" style="margin-top:32px" data-reveal>
@@ -212,8 +200,7 @@ const otherForCompare = run.kind === 'model' ? strongestBaseline : runs.find((r)
 
         <div class="split" style="margin-top:56px">
           <div>
-            <p class="eyebrow">Reprodução</p>
-            <h2 class="h-section" style="margin-top:14px">Como esta execução foi feita</h2>
+            <h2 class="h-section">Como esta execução foi feita</h2>
           </div>
           <div>
             {run.reproduction && (
@@ -233,7 +220,10 @@ const otherForCompare = run.kind === 'model' ? strongestBaseline : runs.find((r)
               <dt>Execução</dt><dd>{result.id}</dd>
               <dt>Conjunto</dt><dd>{result.dataset_hash}</dd>
               <dt>Protocolo</dt><dd>{result.protocol_hash}</dd>
-              {Object.entries(result.config).filter(([k]) => k !== 'reproduction').map(([k, v]) => (
+              <dt>Verificação</dt><dd>{run.verification}</dd>
+              {run.provider && (<><dt>Provedor</dt><dd>{run.provider}</dd></>)}
+              <dt>Data</dt><dd>{date(run.date)}</dd>
+              {Object.entries(result.config).filter(([k]) => k !== 'reproduction' && !/price|cost|budget/i.test(k)).map(([k, v]) => (
                 <>
                   <dt>{k}</dt>
                   <dd>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</dd>

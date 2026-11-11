@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parquetReadObjects } from 'hyparquet';
 import { compressors } from 'hyparquet-compressors';
-import { data, tracks, slug, type Item, type Result } from './index';
+import { data, tracks, modelSlug, type Item, type Result } from './index';
 import { taskNames, modeNames, chamberNames, modelName } from './labels';
 
 export type RunKind = 'baseline' | 'model';
@@ -92,7 +92,7 @@ export const runs: Run[] = runsRaw
     return {
       id: r.id,
       model: r.model,
-      slug: slug(r.model),
+      slug: modelSlug(r.model),
       label: shortName(r.model),
       org: kind === 'baseline' ? 'Referência' : org(r.model),
       kind,
@@ -199,6 +199,49 @@ export const strongestBaseline =
     return avg(b.id) - avg(a.id);
   })[0] || null;
 
+/**
+ * Média simples das fatias principais com contexto. Serve só para ordenar e escolher o que
+ * mostrar primeiro; nunca é exibida como nota, porque misturaria tarefas diferentes.
+ */
+export function orderingScore(runId: string) {
+  const cells = principalSlices.filter((s) => s.mode === 'with_context').map((s) => s.cells[runId]).filter(Boolean);
+  return cells.reduce((sum, c) => sum + c.mean, 0) / Math.max(1, cells.length);
+}
+
+/** Grupo de provedor de cada execução, usado nos filtros. */
+export const providerOf = (r: Run) => (r.kind === 'baseline' ? 'Referências' : r.provider || r.org);
+
+/**
+ * As execuções que a matriz mostra por padrão, no máximo `limit`: a versão mais nova de cada
+ * família de modelo, o melhor modelo de pesos abertos e os próximos mais fortes para completar.
+ * Só modelos: as referências seguem disponíveis no seletor e na visão "acima da referência".
+ */
+export function featuredRuns(limit = 8) {
+  const family = (r: Run) => r.label.replace(/[-_ ]?v?\d+(\.\d+)*([-_.].*)?$/, '');
+  const version = (r: Run) => (r.label.match(/(\d+(?:\.\d+)*)/)?.[1] || '0').split('.').map(Number);
+  const newer = (a: Run, b: Run) => {
+    const [va, vb] = [version(a), version(b)];
+    for (let i = 0; i < Math.max(va.length, vb.length); i++) if ((va[i] || 0) !== (vb[i] || 0)) return (va[i] || 0) - (vb[i] || 0);
+    return Date.parse(a.date) - Date.parse(b.date);
+  };
+  const byScore = [...models].sort((a, b) => orderingScore(b.id) - orderingScore(a.id));
+  const picked: Run[] = [];
+  const room = limit;
+  const add = (r?: Run) => r && !picked.includes(r) && picked.length < room && picked.push(r);
+  const families = new Map<string, Run>();
+  for (const m of models) {
+    const f = family(m);
+    const cur = families.get(f);
+    if (!cur || newer(m, cur) > 0) families.set(f, m);
+  }
+  // O melhor de pesos abertos tem vaga garantida; depois, a versão mais nova de cada família.
+  add(byScore.find((m) => m.openWeights === true));
+  [...families.values()].sort((a, b) => orderingScore(b.id) - orderingScore(a.id)).forEach(add);
+  byScore.forEach(add);
+  const ordered = picked.sort((a, b) => orderingScore(b.id) - orderingScore(a.id));
+  return ordered;
+}
+
 /** Fatias de modelo acima da melhor referência, contando só quando o IC inteiro supera o piso. */
 export function liftSummary(runId: string) {
   let above = 0;
@@ -300,8 +343,9 @@ export const sourceRange = (() => {
 
 /** Payload compacto que os scripts de cliente recebem embutido na página. */
 export const clientPayload = {
-  runs,
+  runs: runs.map((r) => ({ ...r, provider: providerOf(r), order: orderingScore(r.id) })),
   strongest: strongestBaseline?.id || null,
+  featured: featuredRuns().map((r) => r.id),
   slices: slices.map(({ minFamilies, ...s }) => ({
     ...s,
     minFamilies: Number.isFinite(minFamilies) ? minFamilies : 0,

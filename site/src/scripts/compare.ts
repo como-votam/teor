@@ -11,10 +11,10 @@ if (root) {
   const params = new URLSearchParams(location.search);
   const byId = (id: string | null) => p.runs.find((r) => r.id === id);
 
-  // Padrão: o primeiro modelo contra a referência mais forte.
-  const strongest = p.strongest || undefined;
-  let a = byId(params.get('a'))?.id || p.runs.find((r) => r.kind === 'model')?.id || p.runs[0].id;
-  let b = byId(params.get('b'))?.id || (strongest !== a ? strongest : undefined) || p.runs.find((r) => r.id !== a)!.id;
+  // Padrão: os dois modelos mais fortes. Referências só entram se alguém escolher.
+  const ranked = p.runs.filter((r) => r.kind === 'model').sort((x, y) => y.order - x.order);
+  let a = byId(params.get('a'))?.id || ranked[0]?.id || p.runs[0].id;
+  let b = byId(params.get('b'))?.id || ranked.find((r) => r.id !== a)?.id || p.runs.find((r) => r.id !== a)!.id;
   if (a === b) b = p.runs.find((r) => r.id !== a)!.id;
   let chamber = '';
   let sort = 'track';
@@ -25,8 +25,8 @@ if (root) {
     hint: r.kind === 'baseline' ? 'Referência determinística' : `${r.org} · ${r.provider}`,
     group: r.kind === 'baseline' ? 'Referências' : 'Modelos',
   }));
-  const pickA = createSelect({ label: 'Execução A', options, value: a, searchable: true, stacked: true, onChange: (v) => set(v, b) });
-  const pickB = createSelect({ label: 'Execução B', options, value: b, searchable: true, stacked: true, onChange: (v) => set(a, v) });
+  const pickA = createSelect({ label: 'Execução A', options, value: a, searchable: true, onChange: (v) => set(v, b) });
+  const pickB = createSelect({ label: 'Execução B', options, value: b, searchable: true, align: 'end', onChange: (v) => set(a, v) });
   $('[data-pick="a"]', root)!.replaceChildren(pickA.el);
   $('[data-pick="b"]', root)!.replaceChildren(pickB.el);
 
@@ -53,15 +53,16 @@ if (root) {
     render();
   });
 
-  const fact = (label: string, value: string) => h('span', null, `${label} `, h('strong', { style: 'color:var(--color-ink);font-weight:600' }, value));
+  // Fatos de cada lado: provedor e o que importa para quem roda (cobertura, latência, tokens).
   function facts(id: string) {
     const r = byId(id)!;
+    const row = (k: string, v: string) => [h('div', null, h('dt', null, k), h('dd', null, v))];
     return [
-      h('span', { style: 'display:inline-flex;align-items:center;gap:6px' }, h('span', { class: 'swatch', style: `--c:${id === a ? COLORS.a : COLORS.b}` }), id === a ? 'A' : 'B'),
-      fact('cobertura', pct(r.coverage)),
-      fact('custo', r.cost === null ? '—' : `US$ ${r.cost.toLocaleString('pt-BR', { maximumFractionDigits: 4 })}`),
-      fact('latência', r.latency === null ? '—' : `${r.latency.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} s`),
-      h('a', { class: 'link', href: `${base()}modelos/${r.slug}/` }, 'perfil'),
+      ...row('Provedor', r.kind === 'baseline' ? 'Referência' : r.provider),
+      ...row('Cobertura', pct(r.coverage)),
+      ...row('Latência', r.latency === null ? '—' : `${r.latency.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} s`),
+      ...row('Tokens', r.tokensIn ? new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 }).format(r.tokensIn + r.tokensOut) : '—'),
+      h('div', null, h('dd', null, h('a', { class: 'link', href: `${base()}modelos/${r.slug}/` }, 'Perfil completo'))),
     ];
   }
   const base = () => (document.querySelector('[data-logo]') as HTMLAnchorElement).getAttribute('href') || '/';
@@ -114,18 +115,31 @@ if (root) {
       chart.innerHTML = forestHTML(rows.map((r) => r.row), { labelWidth: '36%' });
       mountSeen(chart);
     }
+    // Placar em cabo de guerra: A puxa da esquerda, B da direita, o meio é o que o benchmark não separa.
     const overlap = rows.length - aWins - bWins;
-    const cell = (n: number, text: string, color?: string) =>
+    const side = (n: number, who: string, color: string, align: string) =>
       h(
         'div',
-        null,
-        h('div', { class: 'kpi-value', style: 'display:flex;align-items:center;gap:10px' }, color ? h('span', { class: 'swatch', style: `--c:${color}` }) : null, String(n)),
-        h('div', { class: 'kpi-label' }, text),
+        { class: `tug-side tug-${align}` },
+        h('span', { class: 'tug-n' }, String(n)),
+        h('span', { class: 'tug-cap' }, h('span', { class: 'swatch', style: `--c:${color}` }), `${who} acima`),
       );
     $('[data-verdicts]', root)!.replaceChildren(
-      cell(aWins, `fatias em que ${ra.label} fica acima, com intervalos separados`, COLORS.a),
-      cell(overlap, 'fatias em que os intervalos se sobrepõem'),
-      cell(bWins, `fatias em que ${rb.label} fica acima, com intervalos separados`, COLORS.b),
+      h(
+        'div',
+        { class: 'tug-head' },
+        side(aWins, ra.label, COLORS.a, 'start'),
+        h('div', { class: 'tug-side tug-center' }, h('span', { class: 'tug-n' }, String(overlap)), h('span', { class: 'tug-cap' }, 'sem diferença demonstrada')),
+        side(bWins, rb.label, COLORS.b, 'end'),
+      ),
+      h(
+        'div',
+        { class: 'tug-bar', role: 'img', 'aria-label': `${aWins} fatias com ${ra.label} acima, ${overlap} sobrepostas, ${bWins} com ${rb.label} acima, de ${rows.length}` },
+        h('i', { class: 'tug-a', style: `flex-grow:${aWins}` }),
+        h('i', { class: 'tug-o', style: `flex-grow:${overlap}` }),
+        h('i', { class: 'tug-b', style: `flex-grow:${bWins}` }),
+      ),
+      h('p', { class: 'tug-note' }, `De ${rows.length} fatias em comum. Só conta como acima quando os intervalos de confiança de 95% não se tocam.`),
     );
   }
   render();

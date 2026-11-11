@@ -16,7 +16,6 @@ const tasksOf = (id: string) => [...new Set(itemSummaries.filter((i) => i.track 
 <Layout title="Trilhas de avaliação">
   <Breadcrumbs />
   <section class="shell page-hero">
-    <p class="eyebrow">Trilhas</p>
     <h1 class="h-page">Oito capacidades, medidas uma de cada vez</h1>
     <p class="sub">
       Compreensão factual, regras, contagem, tramitação, previsão, citação, ferramentas e paridade.
@@ -28,7 +27,7 @@ const tasksOf = (id: string) => [...new Set(itemSummaries.filter((i) => i.track 
       {
         tracks.map(([id, name], i) => (
           <span style={`flex:${trackCounts[id] || 0};--i:${i}`} data-tip={tipData(`Trilha ${id} · ${name}`, `${int(trackCounts[id] || 0)} itens`, [['Parte do conjunto', pct((trackCounts[id] || 0) / Math.max(1, total))]])}>
-            {(trackCounts[id] || 0) / total > 0.06 && <span class="lbl">{id}</span>}
+            <span class="lbl">{id}</span>
           </span>
         ))
       }

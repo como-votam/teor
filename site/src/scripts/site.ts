@@ -2,6 +2,7 @@
 import { $, $$, h, isTyping } from './ui/core';
 import { mountSegmented, mountTooltips, mountCopy, mountReveal, mountSeen, openSheet } from './ui/controls';
 import { mountSelects } from './ui/select';
+import './nav'; // navegação do desktop: gatilhos, lente e painel único
 
 document.documentElement.classList.replace('no-js', 'js');
 
@@ -11,65 +12,7 @@ const sentinel = h('div', { 'aria-hidden': 'true', style: 'position:absolute;top
 document.body.prepend(sentinel);
 new IntersectionObserver(([e]) => header?.setAttribute('data-scrolled', String(!e.isIntersecting))).observe(sentinel);
 
-// Lente da navegação: um realce que desliza entre os itens.
-const nav = $('.nav');
-const lens = $('.nav-lens');
-if (nav && lens) {
-  let shown = false;
-  const move = (el: HTMLElement) => {
-    lens.style.transition = shown ? '' : 'opacity .2s var(--ease-editorial)';
-    lens.style.width = `${el.offsetWidth}px`;
-    lens.style.transform = `translateX(${el.offsetLeft}px)`;
-    lens.setAttribute('data-on', '');
-    shown = true;
-  };
-  $$('.nav-link', nav).forEach((link) => {
-    link.addEventListener('pointerenter', () => move(link));
-    link.addEventListener('focus', () => move(link));
-  });
-  nav.addEventListener('pointerleave', () => {
-    if ($('.nav-menu:not([hidden])')) return;
-    lens.removeAttribute('data-on');
-    shown = false;
-  });
-}
-
-// Menu "Método": abre com intenção (atraso curto), fecha com folga.
-const menuBtn = $<HTMLButtonElement>('[data-menu-trigger]');
-const menu = $('.nav-menu');
-if (menuBtn && menu) {
-  let openTimer: ReturnType<typeof setTimeout>;
-  let closeTimer: ReturnType<typeof setTimeout>;
-  const set = (open: boolean) => {
-    menu.hidden = !open;
-    menuBtn.setAttribute('aria-expanded', String(open));
-    if (!open && !nav?.matches(':hover')) lens?.removeAttribute('data-on');
-  };
-  const wrap = menuBtn.parentElement!;
-  wrap.addEventListener('pointerenter', (e) => {
-    if ((e as PointerEvent).pointerType !== 'mouse') return;
-    clearTimeout(closeTimer);
-    openTimer = setTimeout(() => set(true), 110);
-  });
-  wrap.addEventListener('pointerleave', (e) => {
-    if ((e as PointerEvent).pointerType !== 'mouse') return;
-    clearTimeout(openTimer);
-    closeTimer = setTimeout(() => set(false), 140);
-  });
-  menuBtn.addEventListener('click', () => set(menu.hidden));
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !menu.hidden) {
-      set(false);
-      menuBtn.focus();
-    }
-  });
-  document.addEventListener('pointerdown', (e) => {
-    if (!wrap.contains(e.target as Node)) set(false);
-  });
-  wrap.addEventListener('focusout', (e) => {
-    if (!wrap.contains(e.relatedTarget as Node)) set(false);
-  });
-}
+import './nav';
 
 // Navegação mobile em sheet.
 $('[data-mobile-nav]')?.addEventListener('click', () => {
@@ -96,7 +39,7 @@ $$('[data-logo]').forEach((logo) => {
     setTimeout(() => {
       logo.removeAttribute('data-play');
       busy = false;
-    }, 1300);
+    }, 560);
   };
   logo.addEventListener('pointerenter', play);
   logo.addEventListener('focus', play);

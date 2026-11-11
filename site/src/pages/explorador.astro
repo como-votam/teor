@@ -12,7 +12,6 @@ const labels = { tracks, taskNames, modeNames, chamberNames, partitions: data.pa
 <Layout title="Explorar itens">
   <Breadcrumbs />
   <section class="shell page-hero" style="padding-bottom:28px">
-    <p class="eyebrow">Itens públicos</p>
     <h1 class="h-page">Cada pergunta, com o registro de onde saiu</h1>
     <p class="sub">
       {int(data.count)} itens com contexto, gabarito, as três variantes do prompt e o endpoint
@@ -66,7 +65,6 @@ const labels = { tracks, taskNames, modeNames, chamberNames, partitions: data.pa
   <section class="shell sql" id="sql" style="padding-bottom:96px">
     <div class="section-head">
       <div>
-        <p class="eyebrow">Console</p>
         <h2 class="h-section">SQL direto no Parquet</h2>
         <p class="body">
           DuckDB roda no seu navegador sobre as {data.partitions.length} partições publicadas. A tabela

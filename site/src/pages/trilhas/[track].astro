@@ -47,12 +47,11 @@ const charts = mine.map((s) => ({
 <Layout title={`Trilha ${id}: ${name}`}>
   <Breadcrumbs />
   <section class="shell page-hero">
-    <p class="eyebrow">Trilha {id} · {int(trackCounts[id] || 0)} itens</p>
     <h1 class="h-page" style="display:flex;align-items:center;gap:18px">
       <span class="code-tag" style="width:52px;height:52px;font-size:24px;border-radius:6px">{id}</span>
       {name}
     </h1>
-    <p class="sub">{description}</p>
+    <p class="sub">{description} {int(trackCounts[id] || 0)} itens no conjunto público.</p>
   </section>
 
   <section class="shell" style="padding-bottom:40px">

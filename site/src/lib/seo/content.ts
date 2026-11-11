@@ -25,14 +25,14 @@ export const faqs = [
   ],
   [
     'Como avalio o meu modelo?',
-    'Clone o repositório, instale com uv e rode teor run sobre o split público com um teto de orçamento. O comando checa o formato das respostas antes do run completo. Depois, teor score gera o JSON de métricas que acompanha o pull request.',
+    'Clone o repositório, instale com uv e rode teor run sobre o split público. O comando checa o formato das respostas antes do run completo. Depois, teor score gera o JSON de métricas que acompanha o pull request.',
   ],
   [
     'Um resultado publicado aqui foi verificado?',
     'Só quando o selo diz isso. Submissões externas ficam como autodeclaradas até que o mantenedor reproduza a execução ou a supervisione.',
   ],
   [
-    'O quiz guarda minhas respostas?',
+    'O desafio guarda minhas respostas?',
     'Não. As respostas ficam na página aberta e somem ao recarregar. Nada vai para servidor nem para o armazenamento do navegador.',
   ],
 ];

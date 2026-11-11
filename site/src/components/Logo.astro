@@ -11,7 +11,7 @@ const svg = fs.readFileSync('public/brand.svg', 'utf8');
 const paths = [...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]);
 // Duração proporcional ao tamanho do traço; cada anel começa antes do anterior terminar.
 const weights = paths.map((d) => Math.max(40, d.length / 18));
-const total = 1100;
+const total = 480;
 const overlap = 0.62;
 const starts: number[] = [];
 weights.forEach((w, i) => starts.push(i === 0 ? 0 : starts[i - 1] + weights[i - 1] * overlap));

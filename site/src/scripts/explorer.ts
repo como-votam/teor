@@ -1,4 +1,4 @@
-import { $, $$, h, icon, normalize, readJSON, swap, isTyping, announce } from './ui/core';
+import { $, $$, h, icon, normalize, readJSON, swap, isTyping, announce, scrollWithin } from './ui/core';
 import { mountCopy } from './ui/controls';
 import type { ItemSummary } from '../data/derived';
 
@@ -240,7 +240,8 @@ function move(d: number) {
     renderRows();
   }
   select(shown[next].id);
-  document.getElementById(`row-${shown[next].id}`)?.scrollIntoView({ block: 'nearest' });
+  const row = document.getElementById(`row-${shown[next].id}`);
+  if (row) scrollWithin(rowsEl, row);
 }
 document.addEventListener('keydown', (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -528,7 +529,10 @@ fetch(`${base}itens/index.json`)
     }
     if (state.item && all.some((i) => i.id === state.item)) {
       select(state.item);
-      requestAnimationFrame(() => document.getElementById(`row-${state.item}`)?.scrollIntoView({ block: 'center' }));
+      requestAnimationFrame(() => {
+        const row = document.getElementById(`row-${state.item}`);
+        if (row) scrollWithin(rowsEl, row, 'center');
+      });
     }
   })
   .catch(() => {

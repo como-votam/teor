@@ -9,7 +9,6 @@ import { serializeJson } from '../lib/seo/config';
 <Layout title="Comparar execuções">
   <Breadcrumbs />
   <section class="shell page-hero">
-    <p class="eyebrow">Comparar</p>
     <h1 class="h-page">Duas execuções, fatia por fatia</h1>
     <p class="sub">
       A diferença só vale quando os intervalos se separam. Onde eles se sobrepõem, o benchmark não
@@ -28,23 +27,26 @@ import { serializeJson } from '../lib/seo/config';
       </section>
     ) : (
       <section class="shell" style="padding-bottom:96px" data-compare>
-        <div class="vs">
-          <div class="vs-card" data-side="a">
-            <div data-pick="a" />
-            <div class="facts" data-facts="a" />
+        <div class="duel" data-duel>
+          <div class="duel-side duel-a">
+            <span class="duel-tag" aria-hidden="true">A</span>
+            <div class="duel-pick" data-pick="a" />
+            <dl class="duel-facts" data-facts="a" />
           </div>
-          <div class="vs-swap">
-            <button class="icon-btn" type="button" data-swap aria-label="Trocar as execuções de lado">
+          <div class="duel-mid">
+            <span class="duel-x" aria-hidden="true">×</span>
+            <button class="icon-btn duel-swap" type="button" data-swap aria-label="Trocar as execuções de lado">
               <Icon name="arrows-left-right" weight="regular" size={18} />
             </button>
           </div>
-          <div class="vs-card" data-side="b">
-            <div data-pick="b" />
-            <div class="facts" data-facts="b" />
+          <div class="duel-side duel-b">
+            <span class="duel-tag" aria-hidden="true">B</span>
+            <div class="duel-pick" data-pick="b" />
+            <dl class="duel-facts" data-facts="b" />
           </div>
         </div>
 
-        <div class="verdicts" data-verdicts aria-live="polite" />
+        <div class="tug" data-verdicts aria-live="polite" />
 
         <div class="panel" style="margin-top:24px">
           <div class="toolbar">

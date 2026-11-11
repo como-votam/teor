@@ -1,0 +1,249 @@
+---
+// Navegação principal: cinco gatilhos e um único painel que acompanha o gatilho ativo,
+// como no Como Votam. Alguns painéis são só links; outros trazem dados do benchmark.
+import Icon from './Icon.astro';
+import { urls } from '../lib/seo/config';
+import { data, tracks } from '../data';
+import { runs, featuredRuns, liftSummary, trackCounts, models, orderingScore } from '../data/derived';
+import { seriesColor } from '../lib/charts';
+import { int } from '../lib/format';
+
+const base = urls.base;
+const current = urls.relative(Astro.url.pathname) ?? '';
+const starts = (...paths: string[]) => paths.some((p) => current.startsWith(p));
+
+// Resultados: as execuções em destaque com quantas fatias ficam acima da referência.
+const highlight = featuredRuns(7)
+  .filter((r) => r.kind === 'model')
+  .slice(0, 5)
+  .map((r) => ({ run: r, ...liftSummary(r.id) }));
+
+// Comparar: pares prontos que respondem perguntas comuns.
+const family = (label: string) => label.replace(/[-_ ]?v?\d+(\.\d+)*([-_.].*)?$/, '');
+const families = new Map<string, typeof models>();
+for (const m of models) families.set(family(m.label), [...(families.get(family(m.label)) || []), m]);
+const byDate = (a: (typeof models)[number], b: (typeof models)[number]) => a.label.localeCompare(b.label, 'en', { numeric: true });
+// "claude-opus" vira "Claude Opus"; "gpt" vira "GPT".
+const pretty = (f: string) =>
+  f
+    .split('-')
+    .map((w) => (w.length <= 3 ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1)))
+    .join(' ');
+// Só modelos de linguagem: comparar com uma referência não é uma pergunta que alguém faria aqui.
+const pairs: { a: (typeof runs)[number]; b: (typeof runs)[number]; why: string }[] = [];
+const ranked = [...models].sort((a, b) => orderingScore(b.id) - orderingScore(a.id));
+const seen = new Set<string>();
+const push = (a?: (typeof runs)[number], b?: (typeof runs)[number], why = '') => {
+  if (!a || !b || a.id === b.id || pairs.length >= 4) return;
+  const key = [a.id, b.id].sort().join('|');
+  if (seen.has(key)) return;
+  seen.add(key);
+  pairs.push({ a, b, why });
+};
+// Os dois mais fortes, de provedores diferentes quando houver.
+const top = ranked[0];
+push(top, ranked.find((m) => m.provider !== top?.provider) || ranked[1], 'Os dois mais fortes');
+// Gerações de uma família: a versão mais nova contra a mais antiga.
+for (const [name, list] of [...families.entries()].sort((a, b) => b[1].length - a[1].length)) {
+  if (list.length < 2 || pairs.length >= 3) continue;
+  const sorted = [...list].sort(byDate);
+  push(sorted[sorted.length - 1], sorted[0], `Gerações de ${pretty(name)}`);
+}
+// Pesos abertos contra o mais forte.
+push(ranked.find((m) => m.openWeights === true), top, 'Pesos abertos contra o mais forte');
+
+const total = data.count;
+const sample = data.quiz[0]?.prompts[0] || '';
+
+const triggers = [
+  { key: 'resultados', label: 'Resultados', active: starts('modelos/') },
+  { key: 'comparar', label: 'Comparar', active: starts('comparar/') },
+  { key: 'trilhas', label: 'Trilhas', active: starts('trilhas/', 'explorador/') },
+  { key: 'desafio', label: 'Desafio', active: starts('desafio/') },
+  {
+    key: 'metodo',
+    label: 'Método',
+    active: starts('metodologia/', 'analises/', 'dados/', 'rodadas/', 'contribuir/', 'revisar/', 'erratas/', 'como-citar/', 'sobre/'),
+  },
+];
+const method = {
+  Entender: [
+    ['metodologia/', 'Metodologia', 'Trilhas, modos, métricas e bootstrap'],
+    ['analises/interpretacao/', 'Como ler uma nota', 'O que um resultado permite concluir'],
+    ['dados/', 'Dados e fontes', 'Origem, formato e condições de reuso'],
+    ['rodadas/', 'Rodadas', 'Lotes novos com gabarito tardio'],
+  ],
+  Participar: [
+    ['contribuir/', 'Avaliar um modelo', 'Rodar o protocolo e submeter'],
+    ['revisar/', 'Revisar itens', 'Gabaritos e fidelidade das citações'],
+    ['erratas/', 'Erratas', 'Correções versionadas'],
+    ['como-citar/', 'Como citar', 'Software, execução e fonte'],
+  ],
+};
+const link = (href: string, label: string, hint: string, i: number) => ({ href: `${base}${href}`, label, hint, i });
+---
+
+<nav class="nav" aria-label="Principal" data-nav>
+  <span class="nav-lens" aria-hidden="true"></span>
+  {
+    triggers.map((t) => (
+      <button
+        class="nav-link"
+        type="button"
+        data-nav-trigger={t.key}
+        aria-expanded="false"
+        aria-controls={`nav-panel-${t.key}`}
+        aria-current={t.active ? 'page' : undefined}
+      >
+        {t.label}
+        <svg class="chev" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <path d="M8 10.5 4.2 6.7M8 10.5 11.8 6.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        </svg>
+      </button>
+    ))
+  }
+
+  <div class="nav-viewport" data-nav-viewport hidden>
+    <!-- Resultados -->
+    <div class="nav-panel" id="nav-panel-resultados" data-nav-panel="resultados" style="width:600px" hidden>
+      <div class="nav-cols nav-cols--chart">
+        <div>
+          <p class="col-label">Em destaque</p>
+          <div class="nav-mini">
+            {
+              highlight.map((h, i) => (
+                <a class="nav-mini-row menu-link" href={`${base}modelos/${h.run.slug}/`} style={`--i:${i}`}>
+                  <span class="nav-mini-name">
+                    <span class="swatch" style={`--c:${seriesColor(h.run.color)}`} />
+                    {h.run.label}
+                  </span>
+                  <span class="lift-bar nav-mini-bar" aria-hidden="true">
+                    <i class="up" style={`flex:${h.above}`} />
+                    <i class="eq" style={`flex:${h.overlap}`} />
+                    <i class="dn" style={`flex:${h.below}`} />
+                  </span>
+                  <span class="nav-mini-n tnum">
+                    {h.above}/{h.total}
+                  </span>
+                </a>
+              ))
+            }
+          </div>
+          <p class="nav-note">Fatias com o intervalo inteiro acima da melhor referência.</p>
+        </div>
+        <div class="nav-rule">
+          <p class="col-label">Resultados</p>
+          {
+            [
+              link('modelos/', 'Todas as execuções', `${runs.length} publicadas, com cobertura e latência`, 0),
+              link('#resultados', 'Matriz de capacidades', 'Tarefa por execução, com filtros', 1),
+              link('resultados/index.json', 'Catálogo em JSON', 'Métricas públicas para análise', 2),
+              link('contribuir/', 'Avaliar um modelo', 'Rodar o protocolo e submeter', 3),
+            ].map((l) => (
+              <a class="menu-link" href={l.href} style={`--i:${l.i + 1}`}>
+                <strong>{l.label}</strong>
+                <span>{l.hint}</span>
+              </a>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparar -->
+    <div class="nav-panel" id="nav-panel-comparar" data-nav-panel="comparar" style="width:520px" hidden>
+      <p class="col-label">Comparações prontas</p>
+      {
+        pairs.map((p, i) => (
+          <a class="menu-link nav-pair" href={`${base}comparar/?a=${encodeURIComponent(p.a.id)}&b=${encodeURIComponent(p.b.id)}`} style={`--i:${i}`}>
+            <span class="nav-pair-dots" aria-hidden="true">
+              <span class="swatch" style="--c:var(--series-1)" />
+              <span class="swatch" style="--c:var(--series-2)" />
+            </span>
+            <span>
+              <strong>
+                {p.a.label} × {p.b.label}
+              </strong>
+              <span>{p.why}</span>
+            </span>
+          </a>
+        ))
+      }
+      <a class="nav-foot" href={`${base}comparar/`}>
+        Montar outra comparação <Icon name="arrow-right" weight="regular" size={14} />
+      </a>
+    </div>
+
+    <!-- Trilhas -->
+    <div class="nav-panel" id="nav-panel-trilhas" data-nav-panel="trilhas" style="width:600px" hidden>
+      <div class="composition nav-composition" data-nav-comp>
+        {
+          tracks.map(([id, name], i) => (
+            <a
+              href={`${base}trilhas/${id.toLowerCase()}/`}
+              data-track={id}
+              tabindex="-1"
+              aria-hidden="true"
+              title={`${id} · ${name}`}
+              style={`flex:${trackCounts[id] || 0};--i:${i}`}
+            />
+          ))
+        }
+      </div>
+      <div class="nav-track-grid">
+        {
+          tracks.map(([id, name], i) => (
+            <a class="menu-link nav-track" href={`${base}trilhas/${id.toLowerCase()}/`} data-track={id} style={`--i:${i}`}>
+              <span class="code-tag code-tag--soft">{id}</span>
+              <strong>{name}</strong>
+              <span class="tnum">{int(trackCounts[id] || 0)}</span>
+            </a>
+          ))
+        }
+      </div>
+      <div class="nav-foot-row">
+        <a class="nav-foot" href={`${base}explorador/`}>
+          Explorar os {int(total)} itens <Icon name="arrow-right" weight="regular" size={14} />
+        </a>
+        <a class="nav-foot" href={`${base}explorador/#sql`}>
+          Console SQL <Icon name="arrow-right" weight="regular" size={14} />
+        </a>
+        <a class="nav-foot" href={`${base}trilhas/`}>
+          Todas as trilhas <Icon name="arrow-right" weight="regular" size={14} />
+        </a>
+      </div>
+    </div>
+
+    <!-- Desafio -->
+    <div class="nav-panel" id="nav-panel-desafio" data-nav-panel="desafio" style="width:420px" hidden>
+      <p class="col-label">Uma pergunta do desafio</p>
+      <p class="nav-sample">{sample}</p>
+      <p class="nav-note">
+        {data.quiz.length} perguntas com o mesmo contexto que os modelos recebem. No fim, veja como eles
+        foram nas mesmas tarefas. Nada fica salvo.
+      </p>
+      <a class="btn btn--ink btn--sm" href={`${base}desafio/`} style="margin-top:16px">
+        Começar o desafio <Icon name="arrow-right" weight="regular" size={15} />
+      </a>
+    </div>
+
+    <!-- Método -->
+    <div class="nav-panel" id="nav-panel-metodo" data-nav-panel="metodo" style="width:520px" hidden>
+      <div class="nav-cols">
+        {
+          Object.entries(method).map(([group, items], g) => (
+            <div class={g ? 'nav-rule' : ''}>
+              <p class="col-label">{group}</p>
+              {items.map(([href, label, hint], i) => (
+                <a class="menu-link" href={`${base}${href}`} style={`--i:${g * 4 + i}`}>
+                  <strong>{label}</strong>
+                  <span>{hint}</span>
+                </a>
+              ))}
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+</nav>

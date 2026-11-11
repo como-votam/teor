@@ -13,7 +13,7 @@ test('páginas, navegação e acessibilidade', async ({ page }) => {
     '/modelos/',
     '/comparar/',
     '/explorador/',
-    '/quiz/',
+    '/desafio/',
     '/trilhas/',
     '/trilhas/a/',
     '/metodologia/',
@@ -69,7 +69,7 @@ test('comparação sincroniza a URL e conta fatias separadas', async ({ page }) 
   await page.keyboard.press('Enter');
   const url = new URL(page.url());
   expect(url.searchParams.get('a')).not.toBe(url.searchParams.get('b'));
-  await expect(page.locator('[data-verdicts] > div')).toHaveCount(3);
+  await expect(page.locator('[data-verdicts] .tug-n')).toHaveCount(3);
   await page.getByRole('button', { name: 'Trocar as execuções de lado' }).click();
   const swapped = new URL(page.url());
   expect(swapped.searchParams.get('a')).toBe(url.searchParams.get('b'));
@@ -98,8 +98,8 @@ test('busca rápida encontra tarefas e itens', async ({ page }) => {
   await expect(page.locator('.cmdk')).toHaveCount(0);
 });
 
-test('quiz termina sem persistir respostas', async ({ page }) => {
-  await page.goto('/quiz/');
+test('desafio termina sem persistir respostas', async ({ page }) => {
+  await page.goto('/desafio/');
   test.skip((await page.locator('[data-quiz]').count()) === 0, 'Sem conjunto local');
   const total = await page.locator('.quiz-steps i').count();
   await page.getByRole('button', { name: /Conferir/ }).click();
@@ -145,3 +145,35 @@ test('revisão local exporta julgamento com evidência e versão', async ({ page
   ).toEqual([]);
 });
 
+
+test('nenhuma página rola sozinha ao abrir', async ({ page }) => {
+  test.setTimeout(120000);
+  const ids = await (await page.request.get('/itens/index.json')).json();
+  for (const url of ['/', '/modelos/', '/comparar/', '/explorador/', `/explorador/?item=${ids[ids.length - 1].id}`, '/desafio/', '/trilhas/', '/trilhas/a/', '/metodologia/']) {
+    await page.goto(url);
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => scrollY), url).toBe(0);
+  }
+});
+
+test('matriz mostra no máximo sete execuções e filtra por provedor', async ({ page }) => {
+  await page.goto('/');
+  const visible = page.locator('.matrix thead th.col:not(.off)');
+  expect(await visible.count()).toBeLessThanOrEqual(7);
+  expect(await visible.count()).toBeGreaterThan(0);
+  await page.locator('[data-pick-runs] .select-trigger').click();
+  await expect(page.locator('[data-pick-runs] .opt[aria-disabled="true"]').first()).toBeVisible();
+});
+
+test('lente da navegação acompanha o gatilho aberto', async ({ page, viewport }) => {
+  test.skip((viewport?.width ?? 0) < 960, 'Navegação de desktop');
+  await page.goto('/');
+  const trigger = page.locator('[data-nav-trigger="metodo"]');
+  await trigger.hover();
+  await expect(page.locator('#nav-panel-metodo')).toBeVisible();
+  await page.waitForTimeout(450);
+  const lens = await page.locator('.nav-lens').boundingBox();
+  const box = await trigger.boundingBox();
+  expect(Math.abs(lens!.x - box!.x)).toBeLessThan(3);
+});

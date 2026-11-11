@@ -1,4 +1,4 @@
-import { data, tracks, slug, modelName, type Result } from '../../data';
+import { data, tracks, slug, modelSlug, modelName, type Result } from '../../data';
 import { urls, indexable } from './config';
 export interface Page {
   path: string;
@@ -52,9 +52,9 @@ export const staticPages: Page[] = [
     { kind: 'CollectionPage' },
   ),
   page(
-    'quiz/',
-    'Quiz do Legislativo: teste suas respostas | Teor',
-    'Responda às perguntas públicas do Teor e confira gabaritos e fontes. A pontuação fica na página, sem guardar suas respostas.',
+    'desafio/',
+    'Desafio: responda às perguntas que os modelos respondem | Teor',
+    'Responda a perguntas públicas do Teor com o mesmo contexto que os modelos recebem e confira gabarito e fonte oficial. Nada fica salvo.',
   ),
   page(
     'analises/',
@@ -126,7 +126,7 @@ export const modelPages = [...new Set(data.results.map((r) => r.model))]
   .sort()
   .map((model) =>
     page(
-      `modelos/${slug(model)}/`,
+      `modelos/${modelSlug(model)}/`,
       `${model.startsWith('baseline/') ? modelName(model) : model.split('/').pop()}: resultados por tarefa | Teor`,
       `Consulte resultados de ${modelName(model)} no Teor, com tarefas, intervalos de confiança, cobertura, hashes e parâmetros de cada execução.`,
       { kind: 'CollectionPage', model, parent: 'modelos/' },
