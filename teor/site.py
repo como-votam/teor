@@ -30,11 +30,14 @@ def export_site(
             raise ValueError(
                 "Lote oculto de Live exige comprovação de divulgação da rodada inteira"
             )
+    # results/ pode misturar splits (ex.: test-lite no site e test-public no
+    # benchmark). Só entram no pacote público os resultados do mesmo conjunto.
+    expected = digest(items)
     results = []
     for file in sorted(results_dir.glob("*.json")):
         result = Result.model_validate(read_json(file))
-        if result.dataset_hash != digest(items):
-            raise ValueError(f"Resultado usa outro conjunto: {file.name}")
+        if result.dataset_hash != expected:
+            continue
         results.append(result.model_dump(mode="json"))
     public = output / "public/data"
     public.mkdir(parents=True, exist_ok=True)

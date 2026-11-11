@@ -272,3 +272,29 @@ def test_site_and_export_reject_hidden(items, tmp_path):
         export_dataset([hidden], tmp_path / "export")
     with pytest.raises(ValueError, match="oculto"):
         export_site([hidden], tmp_path / "results", tmp_path / "site")
+
+
+def test_site_export_skips_results_from_other_dataset(items, tmp_path):
+    results_dir = tmp_path / "results"
+    results_dir.mkdir()
+    matching = Result(
+        id="match",
+        model="baseline/random",
+        dataset_hash=digest(items),
+        protocol_hash="proto",
+        created_at=datetime.now(UTC),
+        config={},
+        metrics=[],
+        usage={},
+        complete=True,
+        verification="autodeclarado",
+    )
+    other = matching.model_copy(
+        update={"id": "other", "model": "other/model", "dataset_hash": "deadbeef" * 8}
+    )
+    write_json(results_dir / "match.json", matching.model_dump(mode="json"))
+    write_json(results_dir / "other.json", other.model_dump(mode="json"))
+    summary = export_site(items, results_dir, tmp_path / "site")
+    assert summary["results"] == 1
+    payload = read_json(tmp_path / "site/src/data/generated.json")
+    assert [row["id"] for row in payload["results"]] == ["match"]
