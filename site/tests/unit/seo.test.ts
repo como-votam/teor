@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { faqs } from '../../src/lib/seo/content';
 import { createUrls, serializeJson, escapeXml, urls } from '../../src/lib/seo/config';
 import {
   pages,
@@ -119,6 +120,6 @@ describe('fatos, representações e proveniência', () => {
       expect(pageBody(pages[0])).toContain(q.name);
       expect(pageBody(pages[0])).toContain(q.acceptedAnswer.text);
     }
-    expect(questions).toHaveLength(6);
+    expect(questions).toHaveLength(faqs.length);
   });
 });

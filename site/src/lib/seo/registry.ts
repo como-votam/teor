@@ -1,4 +1,4 @@
-import { data, tracks, slug, modelName, type Result } from '../../data';
+import { data, tracks, slug, modelSlug, modelName, type Result } from '../../data';
 import { urls, indexable } from './config';
 export interface Page {
   path: string;
@@ -36,20 +36,25 @@ export const staticPages: Page[] = [
   ),
   page(
     'modelos/',
-    'Modelos e baselines com resultados publicados | Teor',
+    'Resultados por execução: modelos e referências | Teor',
     'Consulte as referências e os modelos com avaliações publicadas no Teor. Abra cada perfil para comparar tarefas, condições e métricas.',
     { kind: 'CollectionPage' },
   ),
   page(
+    'comparar/',
+    'Comparar duas execuções, fatia por fatia | Teor',
+    'Coloque dois modelos ou referências lado a lado no Teor e veja, tarefa por tarefa, onde os intervalos de confiança se separam e onde se sobrepõem.',
+  ),
+  page(
     'explorador/',
-    'Explorar perguntas e fontes oficiais | Teor',
-    'Consulte perguntas do benchmark legislativo, contexto, gabaritos públicos e fontes oficiais. Filtre itens por trilha no explorador do Teor.',
+    'Explorar itens, gabaritos e fontes oficiais | Teor',
+    'Filtre os itens públicos do Teor por trilha, tarefa, casa e modo. Leia contexto, gabarito e fonte oficial, ou consulte o conjunto com SQL no navegador.',
     { kind: 'CollectionPage' },
   ),
   page(
-    'quiz/',
-    'Quiz do Legislativo: teste suas respostas | Teor',
-    'Responda às perguntas públicas do Teor e confira gabaritos e fontes. A pontuação fica na página, sem guardar suas respostas.',
+    'desafio/',
+    'Desafio: responda às perguntas que os modelos respondem | Teor',
+    'Responda a perguntas públicas do Teor com o mesmo contexto que os modelos recebem e confira gabarito e fonte oficial. Nada fica salvo.',
   ),
   page(
     'analises/',
@@ -121,8 +126,8 @@ export const modelPages = [...new Set(data.results.map((r) => r.model))]
   .sort()
   .map((model) =>
     page(
-      `modelos/${slug(model)}/`,
-      `${modelName(model)}: resultados por tarefa | Teor`,
+      `modelos/${modelSlug(model)}/`,
+      `${model.startsWith('baseline/') ? modelName(model) : model.split('/').pop()}: resultados por tarefa | Teor`,
       `Consulte resultados de ${modelName(model)} no Teor, com tarefas, intervalos de confiança, cobertura, hashes e parâmetros de cada execução.`,
       { kind: 'CollectionPage', model, parent: 'modelos/' },
     ),

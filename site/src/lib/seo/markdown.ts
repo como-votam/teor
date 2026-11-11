@@ -43,7 +43,7 @@ export function metricMarkdown(r: Result) {
       .map(cell)
       .join(' | '),
   );
-  return `## Execução ${r.id}\n\n- Modelo: ${r.model}\n- Data da execução: ${r.created_at}\n- Hash do conjunto: ${r.dataset_hash}\n- Hash do protocolo: ${r.protocol_hash}\n- Verificação: ${r.verification}\n- Execução completa: ${r.complete ? 'sim' : 'não'}\n- Cobertura: ${(r.usage.coverage * 100).toFixed(1)}%\n- Custo: ${r.usage.cost_usd === null ? 'não informado' : `US$ ${r.usage.cost_usd}`}\n- Latência média: ${r.usage.latency_mean_seconds === null ? 'não informada' : `${r.usage.latency_mean_seconds} segundos`}\n- ${link('Métricas públicas em JSON', resultPath(r))}\n\n| Trilha | Tarefa | Casa | Modo | Divisão | Qualidade temporal | Resultado | Métrica adicional | Revisão humana |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n${lines.map((l) => `| ${l} |`).join('\n')}\n`;
+  return `## Execução ${r.id}\n\n- Modelo: ${r.model}\n- Data da execução: ${r.created_at}\n- Hash do conjunto: ${r.dataset_hash}\n- Hash do protocolo: ${r.protocol_hash}\n- Verificação: ${r.verification}\n- Execução completa: ${r.complete ? 'sim' : 'não'}\n- Cobertura: ${(r.usage.coverage * 100).toFixed(1)}%\n- Latência média: ${r.usage.latency_mean_seconds === null ? 'não informada' : `${r.usage.latency_mean_seconds} segundos`}\n- ${link('Métricas públicas em JSON', resultPath(r))}\n\n| Trilha | Tarefa | Casa | Modo | Divisão | Qualidade temporal | Resultado | Métrica adicional | Revisão humana |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n${lines.map((l) => `| ${l} |`).join('\n')}\n`;
 }
 export function pageBody(p: Page): string {
   if (p.doc) {
@@ -71,9 +71,14 @@ export function pageBody(p: Page): string {
     case 'analises/':
       return `# Análises do Teor\n\n${p.description}\n\n- ${link('Como interpretar uma nota', 'analises/interpretacao/')}\n- [Notebooks reprodutíveis](${REPOSITORY}/tree/main/analyses)`;
     case 'explorador/':
-      return `# Explorar itens do Teor\n\n${p.description}\n\nItens na exportação pública: ${data.count}. Partições publicadas: ${data.partitions.length}.\n\nO explorador consulta Parquet no navegador. A busca considera apenas partições carregadas. As perguntas trazem contexto, gabarito e evidência.\n\n${data.partitions.map((partition, i) => `- ${link(`Partição ${i + 1}: ${partition.count} itens`, partition.url.replace(/^\//, ''))}`).join('\n') || 'Nenhuma partição pública foi exportada nesta publicação.'}\n\n${link('Política de dados e fontes', 'dados/')}`;
-    case 'quiz/':
-      return `# Teste suas respostas no quiz do Teor\n\n${p.description}\n\nPerguntas nesta exportação: ${data.quiz.length}.\n\n${data.quiz.length ? 'Responda com o contexto fornecido. O gabarito e a fonte aparecem depois de conferir a resposta.' : 'O quiz aguarda um conjunto público exportado.'}\n\nO quiz não guarda respostas no armazenamento do navegador. Comparações com modelos exigem os mesmos itens e a mesma execução. O resultado pessoal não é uma classificação geral de modelos.\n\n${link('Abrir o quiz', 'quiz/')}`;
+      return `# Explorar itens do Teor\n\n${p.description}\n\nItens na exportação pública: ${data.count}. Partições publicadas: ${data.partitions.length}.\n\nO explorador lê um índice estático dos itens e abre cada item sob demanda, com contexto, gabarito, as três variantes do prompt e a evidência oficial. Um console SQL (DuckDB no navegador) consulta as partições Parquet abaixo.\n\n${data.partitions.map((partition, i) => `- ${link(`Partição ${i + 1}: ${partition.count} itens`, partition.url.replace(/^\//, ''))}`).join('\n') || 'Nenhuma partição pública foi exportada nesta publicação.'}\n\n${link('Política de dados e fontes', 'dados/')}`;
+    case 'comparar/':
+      return `# Comparar execuções no Teor\n\n${p.description}\n\nA comparação só vale entre execuções com o mesmo hash de conjunto e de protocolo. Para cada tarefa, casa e modo, a página mostra a média e o intervalo de confiança de 95% das duas execuções, e indica quando os intervalos não se sobrepõem. Isso não produz uma nota geral.\n\n${pages
+        .filter((p) => p.model)
+        .map((p) => `- ${link(modelName(p.model!), p.path)}`)
+        .join('\n')}`;
+    case 'desafio/':
+      return `# Desafio do Teor\n\n${p.description}\n\nPerguntas nesta exportação: ${data.quiz.length}.\n\n${data.quiz.length ? 'Responda com o contexto fornecido. O gabarito e a fonte aparecem depois de conferir a resposta.' : 'O desafio aguarda um conjunto público exportado.'}\n\nO desafio não guarda respostas no armazenamento do navegador. Comparações com modelos exigem os mesmos itens e a mesma execução. O resultado pessoal não é uma classificação geral de modelos.\n\n${link('Abrir o desafio', 'desafio/')}`;
     case 'rodadas/':
       return `# Rodadas do Teor\n\n${p.description}\n\nUma rodada congela os itens, recebe previsões até o fechamento e divulga o gabarito depois.\n\n${data.rounds.length ? data.rounds.map((r) => `## ${r.id}\n\n- Estado: ${r.state}\n- Abertura: ${r.opens_at}\n- Fechamento: ${r.closes_at}\n- Divulgação: ${r.published_at}`).join('\n\n') : 'Nenhuma rodada publicada nesta exportação.'}\n\n${link('Como contribuir', 'contribuir/')}`;
     case 'sobre/':

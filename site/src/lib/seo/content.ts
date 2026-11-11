@@ -1,27 +1,39 @@
 export const faqs = [
   [
-    'O Teor dá uma nota geral para cada modelo?',
-    'Não. Compreender um texto, prever um voto e buscar uma fonte são tarefas diferentes. Cada uma tem sua própria métrica e seu próprio intervalo de confiança.',
+    'Por que não existe uma nota geral?',
+    'Porque ela misturaria resultados que não se compensam. Um modelo pode acertar quase todas as siglas de proposição com o texto no prompt e nenhuma sem ele. A média dessas duas fatias não descreve nenhum uso real. Cada tarefa, casa e modo tem a sua nota e o seu intervalo de confiança.',
   ],
   [
-    'O que são os baselines publicados?',
-    'São referências determinísticas: escolha aleatória, classe majoritária estimada no conjunto de desenvolvimento e busca por BM25. Eles ajudam a interpretar avaliações futuras, mas não são modelos de linguagem.',
+    'O que são as referências?',
+    'Três respondedores sem modelo de linguagem: escolha aleatória, a classe mais frequente no conjunto de desenvolvimento e recuperação por BM25. Elas formam o piso. Uma nota de modelo só diz algo quando o intervalo inteiro fica acima da melhor referência daquela fatia.',
   ],
   [
-    'Posso comparar quaisquer dois resultados?',
-    'Compare a mesma tarefa, casa, modo, divisão, qualidade temporal, conjunto e protocolo. Os filtros iniciais selecionam um recorte comparável; ao ampliá-lo, leia cada linha separadamente.',
+    'Por que alguns intervalos são enormes ou viram um ponto?',
+    'O bootstrap reamostra famílias, não perguntas: variantes do mesmo fato e votos da mesma votação ficam juntos. Uma fatia com uma única família tem intervalo sem informação. O site marca essas células para que ninguém leia precisão onde ela não existe.',
+  ],
+  [
+    'Qual a diferença entre com contexto e sem contexto?',
+    'Com contexto, o registro oficial vai no prompt e medimos leitura. Sem contexto, vai só o identificador do registro, o que funciona como sonda de memória e de possível contaminação. Os dois modos não se comparam entre si.',
   ],
   [
     'De onde vêm os gabaritos?',
-    'De registros e documentos oficiais da Câmara dos Deputados e do Senado Federal. As evidências e os limites de uso são documentados na política de dados.',
+    'Das APIs de dados abertos da Câmara dos Deputados e do Senado Federal e do texto da Constituição. Cada item aponta o registro que o sustenta. Correções entram na página de erratas com versão e hash, sem reescrever resultados anteriores.',
   ],
   [
-    'O quiz guarda minhas respostas?',
-    'Não. As respostas e a pontuação ficam apenas na página aberta. A comparação com modelos exige que eles tenham respondido exatamente aos mesmos itens.',
+    'Posso treinar um modelo com estes itens?',
+    'Não. Os arquivos carregam a string canária TEOR-BENCHMARK-NOT-FOR-TRAINING-2026 para que contaminação possa ser detectada. Leitura, pesquisa e citação seguem as condições da política de dados.',
   ],
   [
-    'Como publico uma avaliação?',
-    'Execute o protocolo, preserve as previsões e prepare um pacote de submissão reproduzível. A página de contribuição explica os arquivos e a verificação necessária.',
+    'Como avalio o meu modelo?',
+    'Clone o repositório, instale com uv e rode teor run sobre o split público. O comando checa o formato das respostas antes do run completo. Depois, teor score gera o JSON de métricas que acompanha o pull request.',
+  ],
+  [
+    'Um resultado publicado aqui foi verificado?',
+    'Só quando o selo diz isso. Submissões externas ficam como autodeclaradas até que o mantenedor reproduza a execução ou a supervisione.',
+  ],
+  [
+    'O desafio guarda minhas respostas?',
+    'Não. As respostas ficam na página aberta e somem ao recarregar. Nada vai para servidor nem para o armazenamento do navegador.',
   ],
 ];
 

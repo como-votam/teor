@@ -105,7 +105,34 @@
   --color-gov-diverge: var(--color-bar-neutral);
   --color-gov-abstain: var(--color-line-strong);
 
+  /* Teor: identidade categórica de execuções de modelo. Validada para daltonismo
+     (scripts/validate_palette.js da skill de dataviz): ΔE adjacente ≥ 11, todas ≥ 3:1.
+     Verde fica reservado para "acertou" e vermelho para "errou"; referências
+     determinísticas ficam em cinza e sempre levam rótulo direto. */
+  --series-1: #2f6db0;
+  --series-2: #c4762a;
+  --series-3: #7a5fc0;
+  --series-4: #b84f7c;
+  --series-ref: #8b939c;
+  --series-ref-soft: #c2c6cb;
+
+  /* Escala sequencial de nota (um só matiz, claro → escuro). */
+  --seq-0: #f1f3f5;
+  --seq-1: #d9e0e7;
+  --seq-2: #b4c2d0;
+  --seq-3: #8197ad;
+  --seq-4: #4f6a85;
+  --seq-5: #24405c;
+  --seq-6: #0f2740;
+
+  --shadow-pop: 0 1px 2px rgba(4, 22, 39, 0.05), 0 10px 24px -10px rgba(4, 22, 39, 0.14),
+    0 28px 56px -24px rgba(4, 22, 39, 0.22);
+  --shadow-card: 0 1px 2px rgba(4, 22, 39, 0.04), 0 8px 24px -16px rgba(4, 22, 39, 0.18);
+
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-editorial: cubic-bezier(0.2, 0.7, 0.3, 1);
   --radius: 0.25rem;
   --radius-card: 0.375rem;
+  --radius-panel: 1rem;
+  --header-h: 68px;
 }

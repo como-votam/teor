@@ -1,13 +1,13 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Breadcrumbs from '../../components/seo/Breadcrumbs.astro';
-import { Content } from '../../../../docs/interpretacao.md';
+import DocShell from '../../components/DocShell.astro';
+import { Content, getHeadings } from '../../../../docs/interpretacao.md';
 ---
 
 <Layout title="Interpretar uma nota">
   <Breadcrumbs />
-  <article class="prose">
-    <p class="eyebrow">Metodologia em prática</p>
+  <DocShell current="analises/interpretacao" headings={getHeadings()}>
     <Content />
-  </article>
+  </DocShell>
 </Layout>

@@ -1,0 +1,66 @@
+---
+// Moldura das páginas de documentação: navegação, artigo e sumário que acompanha a leitura.
+interface Props {
+  current: string;
+  headings: { depth: number; slug: string; text: string }[];
+}
+const { current, headings } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const nav = [
+  ['Entender', [['metodologia', 'Metodologia'], ['analises/interpretacao', 'Como ler uma nota'], ['dados', 'Dados e fontes'], ['rodadas', 'Rodadas']]],
+  ['Participar', [['contribuir', 'Avaliar um modelo'], ['revisar', 'Revisar itens'], ['erratas', 'Erratas'], ['como-citar', 'Como citar']]],
+] as const;
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+<div class="shell doc-shell" style="padding-top:32px">
+  <nav class="doc-nav" aria-label="Documentação">
+    {
+      nav.map(([group, items]) => (
+        <div style="margin-bottom:22px">
+          <p class="col-label">{group}</p>
+          {items.map(([href, label]) => (
+            <a href={`${base}${href}/`} aria-current={current === href ? 'page' : undefined}>
+              {label}
+            </a>
+          ))}
+        </div>
+      ))
+    }
+  </nav>
+  <article class="prose">
+    <slot />
+  </article>
+  <nav class="doc-toc" aria-label="Nesta página">
+    {
+      toc.length > 0 && (
+        <>
+          <p class="col-label">Nesta página</p>
+          {toc.map((h) => (
+            <a href={`#${h.slug}`} style={h.depth === 3 ? 'padding-left:26px' : ''} data-toc={h.slug}>
+              {h.text}
+            </a>
+          ))}
+        </>
+      )
+    }
+  </nav>
+</div>
+
+<script>
+  const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-toc]'));
+  const targets = links.map((l) => document.getElementById(l.dataset.toc!)).filter(Boolean) as HTMLElement[];
+  if (targets.length) {
+    const visible = new Set<string>();
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => (e.isIntersecting ? visible.add(e.target.id) : visible.delete(e.target.id)));
+        const firstVisible = targets.find((t) => visible.has(t.id));
+        if (!firstVisible) return;
+        links.forEach((l) => l.toggleAttribute('data-on', l.dataset.toc === firstVisible.id));
+      },
+      { rootMargin: '-80px 0px -60% 0px' },
+    );
+    targets.forEach((t) => io.observe(t));
+  }
+</script>

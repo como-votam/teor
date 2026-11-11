@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Breadcrumbs from '../components/seo/Breadcrumbs.astro';
+import DocShell from '../components/DocShell.astro';
 import type { MarkdownInstance } from 'astro';
 const docs = import.meta.glob<MarkdownInstance<Record<string, unknown>>>('../../../docs/*.md', {
   eager: true,
@@ -16,31 +17,13 @@ export function getStaticPaths() {
   return pages.map(([page, file, title]) => ({ params: { page }, props: { file, title } }));
 }
 const { file, title } = Astro.props;
-const { Content } = docs[`../../../docs/${file}.md`];
+const doc = docs[`../../../docs/${file}.md`];
+const { Content } = doc;
 ---
 
 <Layout title={title}>
   <Breadcrumbs />
-  <div class="document-shell">
-    <nav class="document-nav" aria-label="Documentação">
-      <p class="eyebrow">Documentação</p>
-      {[
-        ['metodologia', 'Metodologia'],
-        ['dados', 'Dados e fontes'],
-        ['contribuir', 'Contribuir'],
-        ['revisar', 'Revisar itens'],
-        ['erratas', 'Erratas'],
-      ].map(([href, label]) => (
-        <a
-          href={`${import.meta.env.BASE_URL}${href}/`}
-          aria-current={Astro.params.page === href ? 'page' : undefined}
-        >
-          {label}
-        </a>
-      ))}
-    </nav>
-    <article class="prose">
-      <Content />
-    </article>
-  </div>
+  <DocShell current={Astro.params.page!} headings={doc.getHeadings()}>
+    <Content />
+  </DocShell>
 </Layout>

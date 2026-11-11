@@ -1,0 +1,280 @@
+{
+    "as_of": "2026-11-08",
+    "models": {
+        "anthropic/claude-fable-5.0": {
+            "batch": true,
+            "input_per_million": 5.0,
+            "max_input_tokens": 200000,
+            "output_per_million": 25.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "anthropic/claude-fable-5.1": {
+            "batch": true,
+            "input_per_million": 5.0,
+            "max_input_tokens": 200000,
+            "output_per_million": 25.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "anthropic/claude-fable-5.2": {
+            "batch": true,
+            "input_per_million": 5.0,
+            "max_input_tokens": 200000,
+            "output_per_million": 25.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "anthropic/claude-haiku-4.5": {
+            "batch": true,
+            "input_per_million": 1.0,
+            "max_input_tokens": 200000,
+            "output_per_million": 5.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "anthropic/claude-haiku-5.5": {
+            "batch": true,
+            "input_per_million": 1.0,
+            "max_input_tokens": 200000,
+            "output_per_million": 5.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "anthropic/claude-opus-4.5": {
+            "batch": true,
+            "input_per_million": 15.0,
+            "max_input_tokens": 200000,
+            "output_per_million": 75.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "anthropic/claude-opus-5.5": {
+            "batch": true,
+            "input_per_million": 15.0,
+            "max_input_tokens": 200000,
+            "output_per_million": 75.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "anthropic/claude-sonnet-4.5": {
+            "batch": true,
+            "input_per_million": 3.0,
+            "max_input_tokens": 200000,
+            "output_per_million": 15.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "anthropic/claude-sonnet-5.5": {
+            "batch": true,
+            "input_per_million": 3.0,
+            "max_input_tokens": 200000,
+            "output_per_million": 15.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "google/gemini-2.5-deep-think": {
+            "batch": true,
+            "input_per_million": 1.25,
+            "max_input_tokens": 200000,
+            "output_per_million": 10.0,
+            "region": "global",
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "google/gemini-2.5-flash": {
+            "batch": true,
+            "input_per_million": 0.3,
+            "max_input_tokens": 200000,
+            "output_per_million": 2.5,
+            "region": "global",
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "google/gemini-2.5-flash-lite": {
+            "batch": true,
+            "input_per_million": 0.1,
+            "max_input_tokens": 200000,
+            "output_per_million": 0.4,
+            "region": "global",
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "google/gemini-2.5-pro": {
+            "batch": true,
+            "input_per_million": 1.25,
+            "max_input_tokens": 200000,
+            "output_per_million": 10.0,
+            "region": "global",
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "google/gemini-3-deep-think": {
+            "batch": true,
+            "input_per_million": 1.25,
+            "max_input_tokens": 200000,
+            "output_per_million": 10.0,
+            "region": "global",
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "google/gemini-3.5-deep-think": {
+            "batch": true,
+            "input_per_million": 1.25,
+            "max_input_tokens": 200000,
+            "output_per_million": 10.0,
+            "region": "global",
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "google/gemini-3.5-flash": {
+            "batch": true,
+            "input_per_million": 0.3,
+            "max_input_tokens": 200000,
+            "output_per_million": 2.5,
+            "region": "global",
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "google/gemini-3.5-flash-lite": {
+            "batch": true,
+            "input_per_million": 0.1,
+            "max_input_tokens": 200000,
+            "output_per_million": 0.4,
+            "region": "global",
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "google/gemini-3.5-pro": {
+            "batch": true,
+            "input_per_million": 1.25,
+            "max_input_tokens": 200000,
+            "output_per_million": 10.0,
+            "region": "global",
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "openai-api/vertex/google/gemini-2.5-flash": {
+            "batch": false,
+            "input_per_million": 0.3,
+            "max_input_tokens": 40000,
+            "output_per_million": 2.5,
+            "region": "global",
+            "supports_temperature": true
+        },
+        "openai-api/vertex/google/gemini-2.5-flash-lite": {
+            "batch": false,
+            "input_per_million": 0.1,
+            "max_input_tokens": 40000,
+            "output_per_million": 0.4,
+            "region": "global",
+            "supports_temperature": true
+        },
+        "openai-api/vertex/google/gemini-2.5-pro": {
+            "batch": false,
+            "input_per_million": 1.25,
+            "max_input_tokens": 40000,
+            "output_per_million": 10.0,
+            "region": "global",
+            "supports_temperature": true
+        },
+        "openai-api/vertex/google/gemini-3-flash-preview": {
+            "batch": false,
+            "input_per_million": 0.5,
+            "max_input_tokens": 40000,
+            "output_per_million": 3.0,
+            "region": "global",
+            "supports_temperature": true
+        },
+        "openai/gpt-4.5": {
+            "batch": true,
+            "input_per_million": 2.5,
+            "max_input_tokens": 200000,
+            "output_per_million": 10.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "openai/gpt-4.5-nano": {
+            "batch": true,
+            "input_per_million": 0.15,
+            "max_input_tokens": 200000,
+            "output_per_million": 0.6,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "openai/gpt-4.5-pro": {
+            "batch": true,
+            "input_per_million": 15.0,
+            "max_input_tokens": 200000,
+            "output_per_million": 60.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "openai/gpt-5.5": {
+            "batch": true,
+            "input_per_million": 2.5,
+            "max_input_tokens": 200000,
+            "output_per_million": 10.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "openai/gpt-5.5-nano": {
+            "batch": true,
+            "input_per_million": 0.15,
+            "max_input_tokens": 200000,
+            "output_per_million": 0.6,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "openai/gpt-5.5-pro": {
+            "batch": true,
+            "input_per_million": 15.0,
+            "max_input_tokens": 200000,
+            "output_per_million": 60.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": true
+        },
+        "openai/o5": {
+            "batch": true,
+            "input_per_million": 5.0,
+            "max_input_tokens": 200000,
+            "output_per_million": 20.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": false
+        },
+        "openai/o5.1": {
+            "batch": true,
+            "input_per_million": 5.0,
+            "max_input_tokens": 200000,
+            "output_per_million": 20.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": false
+        },
+        "openai/o5.2": {
+            "batch": true,
+            "input_per_million": 5.0,
+            "max_input_tokens": 200000,
+            "output_per_million": 20.0,
+            "region": null,
+            "structured_output": true,
+            "supports_temperature": false
+        }
+    }
+}

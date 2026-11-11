@@ -1,0 +1,97 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Breadcrumbs from '../components/seo/Breadcrumbs.astro';
+import Icon from '../components/Icon.astro';
+import { data } from '../data';
+import { taskNames, chamberNames } from '../data/labels';
+import { principalSlices, models } from '../data/derived';
+import { serializeJson } from '../lib/seo/config';
+import { contextSummary } from '../lib/item-view';
+const base = import.meta.env.BASE_URL;
+// Para cada pergunta, a nota dos modelos publicados na mesma fatia (não no mesmo item).
+const quiz = data.quiz.map((item) => {
+  const slice = principalSlices.find((s) => s.task === item.task && s.chamber === item.chamber && s.mode === item.mode);
+  return {
+    id: item.id,
+    track: item.track,
+    task: taskNames[item.task] || item.task,
+    chamber: chamberNames[item.chamber] || item.chamber,
+    prompt: item.prompts[0],
+    context: item.context,
+    summary: contextSummary(item),
+    answer: item.answer,
+    evidence: item.evidence,
+    models: slice ? models.filter((m) => slice.cells[m.id]).map((m) => ({ label: m.label, mean: slice.cells[m.id].mean })) : [],
+  };
+});
+---
+
+<Layout title="Desafio">
+  <Breadcrumbs />
+  <section class="shell page-hero" style="padding-bottom:32px">
+    <h1 class="h-page">Faça a prova que os modelos fazem</h1>
+    <p class="sub">
+      {quiz.length} perguntas do conjunto público, com o mesmo contexto que o modelo recebe. No fim,
+      veja como os modelos foram nessas tarefas.
+    </p>
+  </section>
+
+  <section class="shell">
+    {
+      quiz.length ? (
+        <div class="quiz" data-quiz>
+          <div class="quiz-card">
+            <div class="quiz-top">
+              <span data-q-count>1 de {quiz.length}</span>
+              <div class="quiz-steps" aria-hidden="true">
+                {quiz.map((_, i) => (
+                  <i data-s={i === 0 ? 'now' : ''} />
+                ))}
+              </div>
+            </div>
+            <div class="quiz-body" data-q-body>
+              <div class="ex-tags" style="margin:0">
+                <span class="code-tag">{quiz[0].track}</span>
+                <span class="badge">{quiz[0].task}</span>
+                <span class="badge badge--muted">{quiz[0].chamber}</span>
+              </div>
+              <h2 class="quiz-q">{quiz[0].prompt}</h2>
+              <div class="ex-block">
+                <p class="specimen-label">Contexto</p>
+                <div class="ex-doc">{quiz[0].summary}</div>
+              </div>
+            </div>
+          </div>
+          <aside class="quiz-side" aria-label="Seu placar">
+            <div class="panel" style="padding:24px">
+              <h2 class="h-panel">Seu placar</h2>
+              <p class="quiz-score" style="margin-top:14px" data-q-score>
+                0<small style="font-size:24px;color:var(--color-placeholder)">/{quiz.length}</small>
+              </p>
+              <p class="fine" style="margin-top:10px">
+                Conjuntos contam por sobreposição (F1), então meio acerto vale meio ponto.
+              </p>
+            </div>
+            <div class="callout">
+              <Icon name="shield-check" size={18} />
+              <span>Nada é salvo. Ao recarregar, o desafio recomeça.</span>
+            </div>
+          </aside>
+          <script type="application/json" id="quiz-data" set:html={serializeJson(quiz)} />
+        </div>
+      ) : (
+        <div class="empty-state" style="margin-bottom:96px">
+          <Icon name="question" size={32} />
+          <h2>O desafio abre com o primeiro conjunto público</h2>
+          <p>As perguntas entram aqui depois da exportação. Enquanto isso, leia a política de dados.</p>
+          <a class="btn" href={`${base}dados/`}>Dados e fontes</a>
+        </div>
+      )
+    }
+  </section>
+  <div style="height:40px"></div>
+</Layout>
+
+<script>
+  import '../scripts/quiz.ts';
+</script>

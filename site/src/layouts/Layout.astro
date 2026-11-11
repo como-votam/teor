@@ -1,10 +1,22 @@
 ---
 import '@fontsource/public-sans/400.css';
+import '@fontsource/public-sans/500.css';
 import '@fontsource/public-sans/600.css';
-import '@fontsource/newsreader/500.css';
+import '@fontsource/public-sans/700.css';
+import '@fontsource/public-sans/500-italic.css';
+import '@fontsource/newsreader/300.css';
+import '@fontsource/newsreader/300-italic.css';
+import '@fontsource/newsreader/400.css';
 import '@fontsource/space-mono/400.css';
+import '@fontsource/space-mono/700.css';
 import '../styles/global.css';
 import Icon from '../components/Icon.astro';
+import Logo from '../components/Logo.astro';
+import SiteNav from '../components/SiteNav.astro';
+import { staticPages } from '../lib/seo/registry';
+import { runs } from '../data/derived';
+import { tracks } from '../data';
+import { taskNames } from '../data/labels';
 import { urls, indexable, serializeJson } from '../lib/seo/config';
 import { findPage, markdownPath, imagePath } from '../lib/seo/registry';
 import { schemaGraph } from '../lib/seo/schema';
@@ -23,22 +35,47 @@ const robots =
     : 'noindex, follow';
 const base = urls.base;
 const links = [
-  ['', 'Comparar'],
-  ['explorador/', 'Explorar itens'],
-  ['quiz/', 'Teste você'],
-  ['analises/', 'Análises'],
-  ['rodadas/', 'Rodadas'],
-  ['metodologia/', 'Metodologia'],
+  ['modelos/', 'Resultados'],
+  ['comparar/', 'Comparar'],
+  ['trilhas/', 'Trilhas'],
+  ['desafio/', 'Desafio'],
 ];
+const methodLinks = {
+  Entender: [
+    ['metodologia/', 'Metodologia', 'Trilhas, modos, métricas e bootstrap'],
+    ['analises/interpretacao/', 'Como ler uma nota', 'O que um resultado permite concluir'],
+    ['dados/', 'Dados e fontes', 'Origem, formato e condições de reuso'],
+    ['rodadas/', 'Rodadas', 'Lotes novos com gabarito tardio'],
+  ],
+  Explorar: [
+    ['explorador/', 'Itens e console SQL', 'Os itens públicos, com fonte'],
+  ],
+  Participar: [
+    ['contribuir/', 'Avaliar um modelo', 'Rodar o protocolo e submeter'],
+    ['revisar/', 'Revisar itens', 'Gabaritos e fidelidade das citações'],
+    ['erratas/', 'Erratas', 'Correções versionadas'],
+    ['como-citar/', 'Como citar', 'Software, execução e fonte'],
+  ],
+};
+const current = urls.relative(Astro.url.pathname) ?? '';
+const isCurrent = (href: string) => (href ? current.startsWith(href) : current === '');
+const cmdkIndex = {
+  base,
+  pages: staticPages.map((p) => ({ name: p.name, path: p.path, description: p.description })),
+  runs: runs.map((r) => ({ label: r.label, slug: r.slug, org: r.org, kind: r.kind })),
+  tracks,
+  tasks: taskNames,
+};
+const year = new Date().getFullYear();
 const umami = import.meta.env.PUBLIC_UMAMI_URL;
 const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
 ---
 
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="no-js">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="robots" content={robots} />
@@ -107,137 +144,111 @@ const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
     {umami && umamiId && <script is:inline defer src={umami} data-website-id={umamiId}></script>}
   </head>
   <body>
-    <a class="skip" href="#conteudo">
-      Ir para o conteúdo
-    </a>
+    <a class="skip" href="#conteudo">Ir para o conteúdo</a>
     <header class="site-header">
-      <div class="header-inner">
-        <a class="wordmark" href={base} aria-label="Teor, página inicial">
-          <img src={`${base}brand.svg`} width="32" height="36" alt="" />
-          <span>
-            teor<span class="brand-by">por Como Votam</span>
-          </span>
-        </a>
-        <nav id="main-nav" aria-label="Principal">
-          {links.map(([href, label]) => (
-            <a
-              href={`${base}${href}`}
-              aria-current={
-                (
-                  href
-                    ? Astro.url.pathname.startsWith(`${base}${href}`)
-                    : Astro.url.pathname === base
-                )
-                  ? 'page'
-                  : undefined
-              }
-            >
-              {label}
-            </a>
-          ))}
-        </nav>
-        <a
-          class="repo"
-          aria-label="Código aberto do Teor no GitHub"
-          href="https://github.com/como-votam/teor"
-        >
-          <Icon name="code" />
-          <span>Código aberto</span>
-        </a>
-        <button
-          class="menu-toggle ghost"
-          aria-expanded="false"
-          aria-controls="main-nav"
-          aria-label="Abrir navegação"
-        >
-          <span></span>
-          <span></span>
-        </button>
+      <div class="shell header-row">
+        <Logo />
+        <SiteNav />
+        <div class="header-actions">
+          <button class="cmdk-trigger" type="button" data-cmdk aria-label="Buscar (atalho: barra)">
+            <Icon name="magnifying-glass" weight="regular" size={15} />
+            <span>Buscar</span>
+            <span style="display:inline-flex;gap:3px"><kbd data-mod-key>Ctrl</kbd><kbd>K</kbd></span>
+          </button>
+          <span class="header-sep" aria-hidden="true"></span>
+          <a class="icon-btn" href="https://github.com/como-votam/teor" aria-label="Código do Teor no GitHub">
+            <Icon name="github-logo" weight="regular" size={20} />
+          </a>
+          <button class="icon-btn menu-toggle" type="button" data-mobile-nav aria-label="Abrir menu">
+            <Icon name="list" weight="regular" size={20} />
+          </button>
+        </div>
       </div>
+      <span class="scroll-progress" aria-hidden="true"></span>
     </header>
+    <template id="mobile-nav">
+      {
+        links.map(([href, label], i) => (
+          <a href={`${base}${href}`} style={`--i:${i}`} aria-current={isCurrent(href) ? 'page' : undefined}>
+            {label}
+          </a>
+        ))
+      }
+      {
+        Object.entries(methodLinks).map(([group, items]) => (
+          <div class="small">
+            <p class="col-label">{group}</p>
+            {items.map(([href, label], i) => (
+              <a href={`${base}${href}`} style={`--i:${i + 5}`}>
+                {label}
+              </a>
+            ))}
+          </div>
+        ))
+      }
+    </template>
     <main id="conteudo">
       <slot />
     </main>
     <footer class="site-footer">
-      <div class="footer-inner">
-        <div class="footer-brand">
-          <a class="wordmark" href={base}>
-            <img src={`${base}brand.svg`} width="32" height="36" alt="" />
-            <span>
-              teor<span class="brand-by">por Como Votam</span>
-            </span>
-          </a>
+      <div class="shell footer-grid">
+        <div>
+          <Logo inverted />
           <p>
-            O que a IA sabe sobre o Legislativo?
-            <br />
-            Um benchmark para conferir a resposta.
+            Benchmark aberto de modelos de linguagem sobre o processo legislativo brasileiro. Mantido
+            pelo Como Votam, sem vínculo com partidos, campanhas, órgãos públicos ou fornecedores de
+            modelos.
           </p>
-          <a class="text-link" href="https://comovotam.com.br">
-            Conheça o Como Votam <Icon name="external" size={16} />
-          </a>
+          <div class="footer-social">
+            <a href="https://github.com/como-votam/teor" aria-label="Teor no GitHub">
+              <Icon name="github-logo" weight="regular" size={20} />
+            </a>
+            <a href="https://comovotam.com.br" aria-label="Site do Como Votam">
+              <Icon name="globe-simple" weight="regular" size={20} />
+            </a>
+          </div>
         </div>
-        <nav aria-label="Informações">
-          <span class="eyebrow">O projeto</span>
-          <a href={`${base}sobre/`}>Sobre o Teor</a>
-          <a href={`${base}trilhas/`}>Trilhas de avaliação</a>
-          <a href={`${base}modelos/`}>Modelos e baselines</a>
-          <a href={`${base}dados/`}>Dados e fontes</a>
-          <a href={`${base}como-citar/`}>Como citar</a>
-          <a href={`${base}erratas/`}>Erratas</a>
-          <a href={`${base}contribuir/`}>Contribuir</a>
-          <a href={`${base}revisar/`}>Revisar itens</a>
+        <nav class="footer-col" aria-label="Explorar">
+          <h2>Explorar</h2>
+          <a href={`${base}modelos/`}>Resultados</a>
+          <a href={`${base}comparar/`}>Comparar execuções</a>
+          <a href={`${base}explorador/`}>Itens e console SQL</a>
+          <a href={`${base}trilhas/`}>Trilhas</a>
+          <a href={`${base}desafio/`}>Desafio</a>
         </nav>
-        <div class="footer-note">
-          <span class="eyebrow">Pesquisa aberta</span>
-          <p>
-            Compreensão, previsão e uso de ferramentas têm métricas próprias. A evidência acompanha
-            cada resultado.
-          </p>
-          <a href="https://github.com/como-votam/teor/blob/main/LICENSE">Código sob Apache 2.0 ↗</a>
-        </div>
+        <nav class="footer-col" aria-label="Método">
+          <h2>Método</h2>
+          <a href={`${base}metodologia/`}>Metodologia</a>
+          <a href={`${base}analises/`}>Análises</a>
+          <a href={`${base}dados/`}>Dados e fontes</a>
+          <a href={`${base}rodadas/`}>Rodadas</a>
+          <a href={`${base}erratas/`}>Erratas</a>
+        </nav>
+        <nav class="footer-col" aria-label="Projeto">
+          <h2>Projeto</h2>
+          <a href={`${base}sobre/`}>Sobre o Teor</a>
+          <a href={`${base}contribuir/`}>Avaliar um modelo</a>
+          <a href={`${base}revisar/`}>Revisar itens</a>
+          <a href={`${base}como-citar/`}>Como citar</a>
+          <a href="https://comovotam.com.br">Como Votam</a>
+        </nav>
       </div>
-      <div class="footer-bottom">
-        <span>Teor · Como Votam</span>
-        <span>
-          <a href={`${base}llms.txt`}>Índice para agentes</a> ·{' '}
-          <a href={`${base}sitemap.xml`}>Mapa do site</a> · <a href={`${base}feed.xml`}>RSS</a>
-        </span>
+      <div class="shell">
+        <div class="footer-bottom">
+          <span>© {year} Como Votam · Código sob Apache 2.0</span>
+          <nav aria-label="Arquivos para máquinas">
+            <a href="https://comovotam.com.br/privacidade">Privacidade</a>
+            <a href="https://comovotam.com.br/termos">Termos</a>
+          </nav>
+          <button type="button" data-top>
+            <Icon name="arrow-up" weight="regular" size={15} /> Voltar ao topo
+          </button>
+        </div>
       </div>
     </footer>
+    <script type="application/json" id="cmdk-index" set:html={serializeJson(cmdkIndex)} />
     <script>
-      const toggle = document.querySelector<HTMLButtonElement>('.menu-toggle')!;
-      const nav = document.getElementById('main-nav')!;
-      function setMenu(open: boolean) {
-        toggle.setAttribute('aria-expanded', String(open));
-        toggle.setAttribute('aria-label', open ? 'Fechar navegação' : 'Abrir navegação');
-        nav.classList.toggle('is-open', open);
-      }
-      toggle.addEventListener('click', () =>
-        setMenu(toggle.getAttribute('aria-expanded') !== 'true'),
-      );
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
-          setMenu(false);
-          toggle.focus();
-        }
-      });
-      nav
-        .querySelectorAll('a')
-        .forEach((link) => link.addEventListener('click', () => setMenu(false)));
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('revealed');
-              observer.unobserve(entry.target);
-            }
-          });
-        },
-        { threshold: 0.12 },
-      );
-      document
-        .querySelectorAll('[data-reveal], .tagline span')
-        .forEach((el) => observer.observe(el));
+      import '../scripts/site.ts';
     </script>
   </body>
 </html>

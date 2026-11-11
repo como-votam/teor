@@ -17,13 +17,13 @@ test('canônica ignora filtros; Markdown e métricas são descobertos pelo HTML'
     (await page.locator('script[type="application/ld+json"]').textContent()) || '',
   );
   expect(graph['@graph'].some((n: { '@type': string }) => n['@type'] === 'FAQPage')).toBe(true);
-  const citable = page.locator('[data-citable]').first();
-  await expect(citable).toContainText('O benchmark em dados');
+  await page.goto('/sobre/');
+  await expect(page.locator('[data-citable]').first()).toContainText('O benchmark em dados');
   await page.goto('/modelos/');
-  const first = page.locator('.article-list a').first();
+  const first = page.locator('a.run-name').first();
   if (await first.count()) {
     await first.click();
-    const jsonLink = page.getByRole('link', { name: 'Baixar métricas públicas em JSON' }).first();
+    const jsonLink = page.getByRole('link', { name: 'JSON público' }).first();
     const metricResponse = await request.get((await jsonLink.getAttribute('href'))!);
     expect(metricResponse.ok()).toBe(true);
     const metric = await metricResponse.json();
@@ -35,6 +35,7 @@ test('canônica ignora filtros; Markdown e métricas são descobertos pelo HTML'
 });
 test('páginas editoriais e trilhas permanecem acessíveis', async ({ page }) => {
   test.setTimeout(120000);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   for (const route of [
     '/sobre/',
     '/como-citar/',

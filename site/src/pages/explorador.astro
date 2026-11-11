@@ -3,82 +3,105 @@ import Layout from '../layouts/Layout.astro';
 import Breadcrumbs from '../components/seo/Breadcrumbs.astro';
 import Icon from '../components/Icon.astro';
 import { data, tracks } from '../data';
-const base = import.meta.env.BASE_URL;
+import { taskNames, modeNames, chamberNames } from '../data/labels';
+import { serializeJson } from '../lib/seo/config';
+import { int } from '../lib/format';
+const labels = { tracks, taskNames, modeNames, chamberNames, partitions: data.partitions };
 ---
 
 <Layout title="Explorar itens">
   <Breadcrumbs />
-  <div class="page-intro">
-    <p class="eyebrow">Dados e gabaritos públicos</p>
-    <h1>
-      Cada pergunta,
-      <br />
-      com sua fonte.
-    </h1>
-    <p class="lead">
-      Veja o contexto, o gabarito e a evidência que sustenta cada item. Os arquivos são consultados
-      no seu navegador.
+  <section class="shell page-hero" style="padding-bottom:28px">
+    <h1 class="h-page">Cada pergunta, com o registro de onde saiu</h1>
+    <p class="sub">
+      {int(data.count)} itens com contexto, gabarito, as três variantes do prompt e o endpoint
+      oficial. Filtre, leia, copie o JSON ou consulte tudo com SQL.
     </p>
-  </div>
-  <div class="explorer-layout">
-    <aside class="explorer-sidebar" aria-label="Filtros dos itens">
-      <div class="filters">
-        <label>
-          <span>
-            <Icon name="search" size={16} /> Buscar pergunta
-          </span>
-          <input id="search" type="search" placeholder="Autoria, quórum, votação…" />
-        </label>
-        <label>
-          Trilha
-          <select id="explorer-track">
-            <option value="">Todas as trilhas</option>
-            {tracks.map(([id, name]) => (
-              <option value={id}>
-                {id} · {name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button id="load" type="button" disabled={!data.partitions.length}>
-          Carregar próxima partição
-        </button>
-      </div>
-      <p>O carregamento é feito por partição. A busca considera os itens já carregados.</p>
-      <a class="text-link" href={`${base}dados/`}>
-        Sobre os dados <Icon name="arrow" size={16} />
-      </a>
-    </aside>
-    <section aria-label="Itens públicos">
-      <p id="explorer-status" role="status">
-        {data.count
-          ? `${data.count.toLocaleString('pt-BR')} itens disponíveis; carregamento sob demanda.`
-          : 'Nenhum conjunto público exportado.'}
-      </p>
-      <div id="items">
-        <div class="empty">
-          <Icon name="book" size={32} />
-          <h2>
-            {data.partitions.length
-              ? 'Abra a primeira partição'
-              : 'O conjunto ainda não foi exportado'}
-          </h2>
-          <p>
-            {data.partitions.length
-              ? 'Carregue os dados para consultar as perguntas. Depois, use a busca e o filtro de trilha para encontrar um item.'
-              : 'O explorador receberá perguntas e fontes quando houver uma exportação pública. Consulte a política de dados para conhecer o formato e os limites de uso.'}
-          </p>
-          <a class="text-link" href={`${base}dados/`}>
-            Consultar dados e fontes <Icon name="arrow" size={16} />
-          </a>
+  </section>
+
+  <section class="shell">
+    <div class="explorer" data-explorer>
+      <aside class="ex-facets" aria-label="Filtros" data-facets>
+        <div class="skeleton" style="height:220px"></div>
+      </aside>
+      <div class="ex-list">
+        <div class="ex-search">
+          <label class="field">
+            <Icon name="magnifying-glass" weight="regular" size={17} />
+            <span class="sr-only">Buscar nos itens</span>
+            <input
+              type="search"
+              placeholder="Buscar pergunta, registro ou id"
+              autocomplete="off"
+              spellcheck="false"
+              data-search
+              data-own-slash
+            />
+            <kbd>/</kbd>
+          </label>
+          <div class="ex-meta">
+            <span role="status" data-count>Carregando o índice…</span>
+            <button class="link" type="button" data-clear hidden>Limpar filtros</button>
+          </div>
+        </div>
+        <div class="ex-rows" tabindex="0" aria-label="Lista de itens" role="region" data-rows>
+          {Array.from({ length: 7 }, () => <div class="skeleton" aria-hidden="true" style="height:58px;margin:6px" />)}
         </div>
       </div>
-    </section>
-  </div>
-  <script
-    type="application/json"
-    id="partitions"
-    set:html={JSON.stringify(data.partitions).replaceAll('<', '\u003c')}
-  />
+      <div class="ex-detail" data-detail aria-live="polite">
+        <div class="ex-empty">
+          <div>
+            <Icon name="list-magnifying-glass" size={36} />
+            <h3>Escolha um item</h3>
+            <p>
+              Use <kbd>↑</kbd> <kbd>↓</kbd> na lista ou <kbd>j</kbd> <kbd>k</kbd> em qualquer lugar.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="shell sql" id="sql" style="padding-bottom:96px">
+    <div class="section-head">
+      <div>
+        <h2 class="h-section">SQL direto no Parquet</h2>
+        <p class="body">
+          DuckDB roda no seu navegador sobre as {data.partitions.length} partições publicadas. A tabela
+          <code class="mono">items</code> tem as colunas <code class="mono">id, track, task, chamber, mode, prompt, item_json</code>.
+          Nada passa por servidor.
+        </p>
+      </div>
+    </div>
+    <div class="sql-examples" data-sql-examples></div>
+    <div class="sql-editor">
+      <label class="sr-only" for="sql-input">Consulta SQL</label>
+      <textarea id="sql-input" spellcheck="false" data-sql-input
+        >SELECT track, mode, count(*) AS itens
+FROM items
+GROUP BY ALL
+ORDER BY track, mode;</textarea
+      >
+      <div class="sql-bar">
+        <span>
+          <kbd data-mod-key>Ctrl</kbd> <kbd>Enter</kbd> executa · primeira execução baixa o DuckDB (~6 MB)
+        </span>
+        <span style="display:flex;gap:8px">
+          <button class="btn btn--sm" type="button" data-sql-csv hidden>
+            <Icon name="download-simple" weight="regular" size={15} /> CSV
+          </button>
+          <button class="btn btn--sm" type="button" data-sql-run>
+            <Icon name="play" weight="fill" size={14} /> Executar
+          </button>
+        </span>
+      </div>
+    </div>
+    <div class="sql-status" data-sql-status role="status"></div>
+    <div class="sql-out" data-sql-out></div>
+  </section>
+  <script type="application/json" id="explorer-labels" set:html={serializeJson(labels)} />
 </Layout>
-<script src="../scripts/explorer.ts"></script>
+
+<script>
+  import '../scripts/explorer.ts';
+</script>
