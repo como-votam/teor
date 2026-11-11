@@ -271,14 +271,6 @@ def agent_run(
         raise typer.BadParameter("Orçamento e concorrência devem ser positivos")
     rows = load_prompts(prompts)
     price = read_json(prices) if prices else None
-    options = dict(
-        isolation=isolation,
-        api_url=api_url,
-        concurrency=concurrency,
-        timeout=timeout,
-        deny_read=deny_read or [],
-        price=price,
-    )
     try:
         if preflight or preflight_only:
             sample = preflight_rows(rows)
@@ -288,7 +280,12 @@ def agent_run(
                 model,
                 output.with_name(output.stem + ".preflight.jsonl"),
                 budget,
-                **options,
+                isolation=isolation,
+                api_url=api_url,
+                concurrency=concurrency,
+                timeout=timeout,
+                deny_read=deny_read or [],
+                price=price,
             )
             invalid = [p for p in done if p.status != "ok"]
             rate = len(invalid) / max(len(done), 1)
@@ -299,7 +296,20 @@ def agent_run(
                 raise ValueError("Preflight reprovado; nada além dele foi gasto")
             if preflight_only:
                 return
-        values = run_agent(rows, agent, model, output, budget, max_calls=max_calls, **options)
+        values = run_agent(
+            rows,
+            agent,
+            model,
+            output,
+            budget,
+            isolation=isolation,
+            api_url=api_url,
+            concurrency=concurrency,
+            timeout=timeout,
+            deny_read=deny_read or [],
+            price=price,
+            max_calls=max_calls,
+        )
     except ValueError as error:
         typer.echo(str(error), err=True)
         raise typer.Exit(1) from error

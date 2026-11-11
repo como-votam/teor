@@ -4,8 +4,9 @@ import { mountSeen } from './ui/controls';
 import { forestHTML, tipData } from '../lib/charts';
 import type { ClientPayload } from '../data/derived';
 
-const root = $('[data-compare]');
-if (root) {
+const container = $('[data-compare]');
+if (container) {
+  const root = container;
   const p = readJSON<ClientPayload>('payload');
   const COLORS = { a: 'var(--series-1)', b: 'var(--series-2)' };
   const params = new URLSearchParams(location.search);

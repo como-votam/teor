@@ -161,7 +161,7 @@ const firstTrack = trackPayload[0];
         <figcaption class="hemi-controls">
           <div class="seg" role="radiogroup" aria-label="Agrupar as perguntas por" data-seg data-hemi-mode>
             {hemiModes.map((m, i) => (
-              <button type="button" role="radio" aria-checked={String(i === 0)} data-value={m.key}>
+              <button type="button" role="radio" aria-checked={i === 0} data-value={m.key}>
                 <span data-text={m.label}>{m.label}</span>
               </button>
             ))}
@@ -210,7 +210,7 @@ const firstTrack = trackPayload[0];
                 <span class="mx-label" id="mx-casa">Casa</span>
                 <div class="seg" role="radiogroup" aria-labelledby="mx-casa" data-seg data-matrix-chamber>
                   {chambers.map((c, i) => (
-                    <button type="button" role="radio" aria-checked={String(i === 0)} data-value={c}>
+                    <button type="button" role="radio" aria-checked={i === 0} data-value={c}>
                       <span data-text={chamberNames[c]}>{chamberNames[c]}</span>
                     </button>
                   ))}
@@ -220,7 +220,7 @@ const firstTrack = trackPayload[0];
                 <span class="mx-label" id="mx-modo">Modo</span>
                 <div class="seg" role="radiogroup" aria-labelledby="mx-modo" data-seg data-matrix-mode>
                   {[['', 'Todos'], ['with_context', 'Com contexto'], ['closed_book', 'Sem contexto']].map(([v, l], i) => (
-                    <button type="button" role="radio" aria-checked={String(i === 0)} data-value={v}>
+                    <button type="button" role="radio" aria-checked={i === 0} data-value={v}>
                       <span data-text={l}>{l}</span>
                     </button>
                   ))}
@@ -448,7 +448,7 @@ const firstTrack = trackPayload[0];
               role="tab"
               id={`tab-${t.id}`}
               aria-controls="track-panel"
-              aria-selected={String(i === 0)}
+              aria-selected={i === 0}
               tabindex={i === 0 ? 0 : -1}
               data-track={t.id}
             >
@@ -521,7 +521,7 @@ const firstTrack = trackPayload[0];
                 class="step"
                 type="button"
                 role="tab"
-                aria-selected={String(i === 0)}
+                aria-selected={i === 0}
                 tabindex={i === 0 ? 0 : -1}
                 aria-controls="term"
                 data-step={i}

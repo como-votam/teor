@@ -13,8 +13,9 @@ interface Q {
   evidence: { ref: string; url: string }[];
   models: { label: string; mean: number }[];
 }
-const root = $('[data-quiz]');
-if (root) {
+const container = $('[data-quiz]');
+if (container) {
+  const root = container;
   const items = readJSON<Q[]>('quiz-data');
   const body = $('[data-q-body]', root)!;
   const steps = $$('.quiz-steps i', root);

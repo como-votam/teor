@@ -72,12 +72,12 @@ function tip() {
 function fill(data: TipData) {
   const el = tip();
   el.replaceChildren(
-    data.t ? h('div', { style: 'color:#a9b6c4' }, data.t) : null,
-    data.v ? h('strong', null, data.v) : null,
+    ...(data.t ? [h('div', { style: 'color:#a9b6c4' }, data.t)] : []),
+    ...(data.v ? [h('strong', null, data.v)] : []),
     ...(data.rows || []).map(([label, value, color]) =>
       h('div', { class: 't-row' }, color ? h('span', { class: 't-key', style: `--c:${color}` }) : null, h('span', null, label), h('b', null, value)),
     ),
-    data.s ? h('div', { class: 't-sub' }, data.s) : null,
+    ...(data.s ? [h('div', { class: 't-sub' }, data.s)] : []),
   );
 }
 function position(target: Element) {

@@ -55,7 +55,7 @@ const sameCohort = new Set(runs.map((r) => `${r.datasetHash}:${r.protocolHash}`)
             </label>
             <div class="seg" role="radiogroup" aria-label="Tipo de execução" data-seg data-rt-kind>
               {[['', 'Todas'], ['model', 'Modelos'], ['baseline', 'Referências']].map(([v, l], i) => (
-                <button type="button" role="radio" aria-checked={String(i === 0)} data-value={v}>
+                <button type="button" role="radio" aria-checked={i === 0} data-value={v}>
                   <span data-text={l}>{l}</span>
                 </button>
               ))}
