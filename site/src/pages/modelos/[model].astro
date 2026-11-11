@@ -1,10 +1,14 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Breadcrumbs from '../../components/seo/Breadcrumbs.astro';
+import Icon from '../../components/Icon.astro';
 import { resultPath } from '../../lib/seo/registry';
 import { urls } from '../../lib/seo/config';
-
-import { data, slug, taskNames, modeNames, chamberNames } from '../../data';
+import { data, slug, tracks } from '../../data';
+import { taskNames, modeNames, chamberNames } from '../../data/labels';
+import { runs, slices, liftSummary, contextPairs, strongestBaseline } from '../../data/derived';
+import { pct, pp, usd, secs, date, compact, int, shortHash } from '../../lib/format';
+import { forestHTML, seriesColor, tipData } from '../../lib/charts';
 export function getStaticPaths() {
   return [...new Set(data.results.map((r) => r.model))].map((model) => ({
     params: { model: slug(model) },
@@ -12,121 +16,239 @@ export function getStaticPaths() {
   }));
 }
 const { model } = Astro.props;
+const base = import.meta.env.BASE_URL;
 const results = data.results.filter((r) => r.model === model);
+const trackName = Object.fromEntries(tracks.map(([id, name]) => [id, name]));
+const runViews = results.map((result) => {
+  const run = runs.find((r) => r.id === result.id)!;
+  const color = seriesColor(run.color);
+  const mine = slices.filter((s) => s.cells[run.id]);
+  const forestRows = mine.map((s) => {
+    const c = s.cells[run.id];
+    const lift = run.kind === 'model' && s.floor !== null ? c.mean - s.floor : null;
+    return {
+      group: `${s.track} · ${trackName[s.track]}`,
+      label: `${taskNames[s.task] || s.task}${s.experimental ? ' (experimental)' : ''}`,
+      sub: `${chamberNames[s.chamber]} · ${modeNames[s.mode]}`,
+      floor: run.kind === 'model' ? s.floor : null,
+      points: [{ mean: c.mean, low: c.low, high: c.high, color, ref: run.kind === 'baseline', variants: c.variants }],
+      tip: tipData(`${taskNames[s.task] || s.task} · ${chamberNames[s.chamber]}`, pct(c.mean), [
+        ['IC 95%', `${pct(c.low)} a ${pct(c.high)}`],
+        ['Respostas · famílias', `${int(c.n)} · ${int(c.families)}`],
+        ...(c.variants.length ? ([['Variantes de prompt', c.variants.map((v) => pct(v, 0)).join(' · ')]] as [string, string][]) : []),
+        ...(lift !== null ? ([['Contra a melhor referência', pp(lift)]] as [string, string][]) : []),
+      ]),
+    };
+  });
+  const pairs = run.kind === 'model' ? contextPairs(run.id) : [];
+  const dumbbell = pairs.map(({ slice, withContext, closed }) => ({
+    label: taskNames[slice.task] || slice.task,
+    sub: chamberNames[slice.chamber],
+    connect: true,
+    value: pp(withContext.mean - closed.mean),
+    points: [
+      { mean: closed.mean, low: closed.low, high: closed.high, color, hollow: true, name: 'sem contexto' },
+      { mean: withContext.mean, low: withContext.low, high: withContext.high, color, name: 'com contexto' },
+    ],
+    tip: tipData(`${taskNames[slice.task] || slice.task} · ${chamberNames[slice.chamber]}`, pp(withContext.mean - closed.mean), [
+      ['Sem contexto', pct(closed.mean), color],
+      ['Com contexto', pct(withContext.mean), color],
+    ]),
+  }));
+  const gaps = (result.metrics as any[]).filter((m) => m.task === 'paired_gap');
+  const extras = (result.metrics as any[]).filter((m) => m.brier);
+  return { result, run, forestRows, dumbbell, gaps, extras, lift: run.kind === 'model' ? liftSummary(run.id) : null };
+});
+const first = runViews[0];
+const run = first.run;
+const otherForCompare = run.kind === 'model' ? strongestBaseline : runs.find((r) => r.kind === 'model');
 ---
 
 <Layout title={model}>
   <Breadcrumbs />
-  <p class="eyebrow">PERFIL DO MODELO</p>
-  <h1>{model}</h1>
-  <p>
-    Notas de tarefas diferentes não são somadas. Compare somente execuções com o mesmo conjunto e
-    protocolo.
-  </p>
-  {results.map((result) => (
-    <section class="model-run" id={`execucao-${encodeURIComponent(result.id)}`}>
-      <h2>
-        Execução de{' '}
-        {new Date(result.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
-      </h2>
-      <p>
-        <span class="badge">{result.verification}</span> · cobertura{' '}
-        {(result.usage.coverage * 100).toFixed(1)}% · custo{' '}
-        {result.usage.cost_usd === null
-          ? 'não informado'
-          : `US$ ${result.usage.cost_usd.toFixed(4)}`}{' '}
-        · latência{' '}
-        {result.usage.latency_mean_seconds === null
-          ? 'não informada'
-          : `${result.usage.latency_mean_seconds.toFixed(2)} s`}
-      </p>
-      <div class="model-stats">
-        <div>
-          <small>Cobertura da execução</small>
-          <strong>{(result.usage.coverage * 100).toFixed(1).replace('.', ',')}%</strong>
+  <section class="shell page-hero">
+    <p class="eyebrow">
+      <span class={run.kind === 'baseline' ? 'swatch swatch--ref' : 'swatch'} style={`--c:${seriesColor(run.color)}`}></span>
+      {run.kind === 'baseline' ? 'Referência determinística' : 'Modelo de linguagem'}
+    </p>
+    <h1 class="h-page" style="max-width:none;overflow-wrap:anywhere">{run.label}</h1>
+    <p class="mono fine" style="margin-top:12px;overflow-wrap:anywhere">{model}</p>
+    <div class="ex-tags" style="margin-top:18px">
+      {run.provider && <span class="badge">{run.provider}</span>}
+      {run.openWeights === true && <span class="badge">Pesos abertos</span>}
+      <span class="badge badge--muted">Verificação: {run.verification}</span>
+      <span class="badge badge--line">{run.split}</span>
+      <span class="badge badge--line">{date(run.date)}</span>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:26px">
+      {
+        otherForCompare && (
+          <a class="btn btn--ink" href={`${base}comparar/?a=${encodeURIComponent(run.id)}&b=${encodeURIComponent(otherForCompare.id)}`}>
+            <Icon name="scales" weight="regular" size={17} /> Comparar com {otherForCompare.label}
+          </a>
+        )
+      }
+      <a class="btn btn--outline" href={urls.path(resultPath(first.result))}>
+        <Icon name="file-code" weight="regular" size={17} /> Métricas em JSON
+      </a>
+    </div>
+  </section>
+
+  {
+    runViews.map(({ result, run, forestRows, dumbbell, gaps, extras, lift }) => (
+      <section class="shell" id={`execucao-${encodeURIComponent(result.id)}`} style="padding-bottom:72px">
+        <div class="kpis" data-n="5">
+          <div class="kpi">
+            <div class="kpi-value">{pct(run.coverage)}</div>
+            <div class="kpi-label">Cobertura: respostas recebidas sobre as esperadas</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-value">{lift ? `${lift.above}/${lift.total}` : '—'}</div>
+            <div class="kpi-label">{lift ? 'Fatias com o IC inteiro acima da melhor referência' : 'Referências formam o piso'}</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-value">{usd(run.cost)}</div>
+            <div class="kpi-label">Custo informado da execução</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-value">{secs(run.latency)}</div>
+            <div class="kpi-label">Latência média por chamada</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-value">{run.tokensIn ? compact(run.tokensIn + run.tokensOut) : '—'}</div>
+            <div class="kpi-label">
+              {run.tokensIn ? `Tokens (${compact(run.tokensIn)} de entrada, ${compact(run.tokensOut)} de saída)` : 'Sem tokens: não chama modelo'}
+            </div>
+          </div>
         </div>
-        <div>
-          <small>Custo informado</small>
-          <strong>
-            {result.usage.cost_usd === null
-              ? 'Não informado'
-              : `US$ ${result.usage.cost_usd.toFixed(4)}`}
-          </strong>
+        {run.invalid > 0 && (
+          <p class="note">
+            {int(run.invalid)} de {int(run.calls)} respostas vieram fora do formato e receberam zero, como manda o protocolo.
+          </p>
+        )}
+
+        {dumbbell.length > 0 && (
+          <div class="panel" style="margin-top:32px" data-reveal>
+            <div class="panel-head">
+              <div>
+                <h2 class="h-panel">Quanto o contexto acrescenta</h2>
+                <p>
+                  Cada linha liga a nota sem contexto (ponto vazado) à nota com o registro no prompt (ponto cheio). Distância
+                  grande indica que o modelo lê bem o que recebe, mas não sabe o fato de memória.
+                </p>
+              </div>
+              <div class="legend">
+                <span><span class="swatch swatch--ref" style={`box-shadow:inset 0 0 0 2px ${seriesColor(run.color)}`} /> Sem contexto</span>
+                <span><span class="swatch" style={`--c:${seriesColor(run.color)}`} /> Com contexto</span>
+              </div>
+            </div>
+            <Fragment set:html={forestHTML(dumbbell, { labelWidth: '34%' })} />
+          </div>
+        )}
+
+        <div class="panel" style="margin-top:24px" data-reveal>
+          <div class="panel-head">
+            <div>
+              <h2 class="h-panel">Todas as fatias</h2>
+              <p>
+                Ponto: média. Barra: intervalo de confiança de 95% por bootstrap de famílias. Traços finos: média de cada uma das
+                três variantes do prompt.{run.kind === 'model' ? ' Linha cinza vertical: melhor referência da fatia.' : ''}
+              </p>
+            </div>
+            <div class="legend">
+              <span><span class="ci" /> IC 95%</span>
+              {run.kind === 'model' && <span><span class="tick" /> Melhor referência</span>}
+            </div>
+          </div>
+          <Fragment set:html={forestHTML(forestRows, { labelWidth: '40%' })} />
         </div>
-        <div>
-          <small>Latência média</small>
-          <strong>
-            {result.usage.latency_mean_seconds === null
-              ? 'Não informada'
-              : `${result.usage.latency_mean_seconds.toFixed(2)} s`}
-          </strong>
+
+        {(gaps.length > 0 || extras.length > 0) && (
+          <div class="cards" style="margin-top:24px">
+            {extras.length > 0 && (
+              <div class="panel">
+                <h2 class="h-panel">Previsão: Brier</h2>
+                <p class="fine" style="margin-top:8px">Menor é melhor. Casos retrospectivos não demonstram previsão prospectiva.</p>
+                <table class="table" style="margin-top:16px">
+                  <thead>
+                    <tr><th>Tarefa</th><th>Casa</th><th class="num">Brier</th></tr>
+                  </thead>
+                  <tbody>
+                    {extras.map((m) => (
+                      <tr>
+                        <td>{taskNames[m.task] || m.task}</td>
+                        <td>{chamberNames[m.chamber]}</td>
+                        <td class="num">{m.brier.mean.toFixed(3).replace('.', ',')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {gaps.length > 0 && (
+              <div class="panel">
+                <h2 class="h-panel">Paridade: diferenças pareadas</h2>
+                <p class="fine" style="margin-top:8px">
+                  Mesma pergunta e mesmos votos, só o partido muda. Diferença pareada, não diagnóstico causal.
+                </p>
+                <table class="table" style="margin-top:16px">
+                  <thead>
+                    <tr><th>Par</th><th>Casa</th><th class="num">Diferença</th></tr>
+                  </thead>
+                  <tbody>
+                    {gaps.map((m) => (
+                      <tr>
+                        <td>{m.first} − {m.second}</td>
+                        <td>{chamberNames[m.chamber]}</td>
+                        <td class="num">{pp(m.mean)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div class="split" style="margin-top:56px">
+          <div>
+            <p class="eyebrow">Reprodução</p>
+            <h2 class="h-section" style="margin-top:14px">Como esta execução foi feita</h2>
+          </div>
+          <div>
+            {run.reproduction && (
+              <div class="term" style="margin-bottom:24px">
+                <div class="term-bar">
+                  <span class="lights" aria-hidden="true"><i /><i /><i /></span>
+                  <span>reprodução</span>
+                  <button class="icon-btn copy" type="button" data-copy={run.reproduction} aria-label="Copiar comando">
+                    <Icon name="copy" weight="regular" size={16} class="ico-copy" />
+                    <Icon name="check" weight="bold" size={16} class="ico-check" />
+                  </button>
+                </div>
+                <pre tabindex="0" aria-label="Comando de reprodução" style="min-height:0;white-space:pre-wrap"><code><span class="o">{run.reproduction}</span></code></pre>
+              </div>
+            )}
+            <dl class="kv">
+              <dt>Execução</dt><dd>{result.id}</dd>
+              <dt>Conjunto</dt><dd>{result.dataset_hash}</dd>
+              <dt>Protocolo</dt><dd>{result.protocol_hash}</dd>
+              {Object.entries(result.config).filter(([k]) => k !== 'reproduction').map(([k, v]) => (
+                <>
+                  <dt>{k}</dt>
+                  <dd>{typeof v === 'object' ? JSON.stringify(v) : String(v)}</dd>
+                </>
+              ))}
+            </dl>
+            <p class="fine" data-citable>
+              Execução <strong>{result.id}</strong> de <strong>{model}</strong>, criada em{' '}
+              <time datetime={result.created_at}>{date(result.created_at)}</time>, conjunto {shortHash(result.dataset_hash)},
+              protocolo {shortHash(result.protocol_hash)}. <a class="link" href={urls.path(resultPath(result))}>JSON público</a> ·{' '}
+              <a class="link" href={urls.path('como-citar/')}>Como citar</a>
+            </p>
+          </div>
         </div>
-      </div>
-      <div class="table-wrap" tabindex="0" role="region" aria-label="Métricas por tarefa">
-        <table>
-          <thead>
-            <tr>
-              <th>Trilha</th>
-              <th>Tarefa</th>
-              <th>Casa / modo</th>
-              <th>Resultado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {result.metrics.map((m) => (
-              <tr>
-                <td>{m.track}</td>
-                <td>{taskNames[m.task] || m.task}</td>
-                <td>
-                  {chamberNames[m.chamber || ''] || m.chamber} / {modeNames[m.mode || ''] || m.mode}
-                </td>
-                <td>
-                  {m.score
-                    ? `${(m.score.mean * 100).toFixed(1)}% (${m.score.ci95.map((n) => (n * 100).toFixed(1)).join('–')}%)`
-                    : m.mean !== undefined
-                      ? `${m.first} − ${m.second}: ${(m.mean * 100).toFixed(1)} pontos percentuais (${m.ci95?.map((n) => (n * 100).toFixed(1)).join('–')})`
-                      : m.semantic_fidelity || 'Métrica específica'}
-                  {m.score && (
-                    <span class="score-inline" aria-hidden="true">
-                      <span style={`width:${m.score.mean * 100}%`}></span>
-                    </span>
-                  )}
-                  {m.brier && ` · Brier ${m.brier.mean.toFixed(3)}`}
-                  {m.citation_validity &&
-                    ` · trechos localizados ${(m.citation_validity.mean * 100).toFixed(1)}%`}
-                  {m.human_fidelity &&
-                    ` · fidelidade humana ${(m.human_fidelity.mean * 100).toFixed(1)}%`}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p class="status" data-citable>
-        Execução <strong>{result.id}</strong> de <strong>{model}</strong>, criada em{' '}
-        <time datetime={result.created_at}>{result.created_at}</time>. Cobertura de{' '}
-        {(result.usage.coverage * 100).toFixed(1)}%; verificação {result.verification}.{' '}
-        <a href={urls.path(resultPath(result))}>Baixar métricas públicas em JSON</a> ·{' '}
-        <a href={urls.path('como-citar/')}>Como citar esta execução</a>
-      </p>
-      <details>
-        <summary>Protocolo e parâmetros</summary>
-        <pre>{JSON.stringify({dataset:result.dataset_hash,protocol:result.protocol_hash,config:result.config},null,2)}</pre>
-      </details>
-      {(data.examples || [])
-        .filter((e) => e.model === model && e.run_id === result.id)
-        .map((example) => (
-          <details>
-            <summary>
-              {example.score === 1 ? 'Exemplo de acerto' : 'Exemplo de erro'} · {example.item.track}
-            </summary>
-            <p>{example.item.prompts[0]}</p>
-            <pre>{JSON.stringify({context:example.item.context,response:example.response,answer:example.item.answer.value},null,2)}</pre>
-            {example.item.evidence.map((e) => (
-              <a href={e.url}>Fonte oficial ↗</a>
-            ))}
-          </details>
-        ))}
-    </section>
-  ))}
+      </section>
+    ))
+  }
 </Layout>

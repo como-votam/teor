@@ -1,27 +1,40 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Breadcrumbs from '../../components/seo/Breadcrumbs.astro';
+import Icon from '../../components/Icon.astro';
+const base = import.meta.env.BASE_URL;
 ---
 
 <Layout title="Análises">
   <Breadcrumbs />
-  <p class="eyebrow">PERGUNTAS SOBRE O BENCHMARK</p>
-  <h1>
-    Antes da conclusão,
-    <br />a evidência.
-  </h1>
-  <p>
-    Leituras sobre cobertura, incerteza e limites de interpretação. Os notebooks acompanham cada
-    análise.
-  </p>
-  <div class="article-list">
-    <a href={`${import.meta.env.BASE_URL}analises/interpretacao/`}>
-      O que uma nota por trilha permite concluir
-      <span>Por que compreensão, previsão e fidelidade precisam de leituras diferentes.</span>
-    </a>
-    <a href="https://github.com/como-votam/teor/tree/main/analyses">
-      Abrir notebooks reprodutíveis ↗
-      <span>Coleta, cobertura, prompts, previsão e paridade, sem avaliações inventadas.</span>
-    </a>
-  </div>
+  <section class="shell page-hero">
+    <p class="eyebrow">Análises</p>
+    <h1 class="h-page">Leituras sobre o que os números permitem dizer</h1>
+    <p class="sub">Cobertura, incerteza, contaminação e limites, com notebooks que reproduzem cada gráfico.</p>
+  </section>
+  <section class="shell" style="padding-bottom:96px">
+    <div class="list-rows">
+      <a class="list-row" href={`${base}analises/interpretacao/`}>
+        <div>
+          <h2 class="h-block" style="font-size:22px">Uma nota responde a uma pergunta</h2>
+          <p>Por que compreensão, previsão e fidelidade de citação pedem leituras diferentes.</p>
+        </div>
+        <span class="go"><Icon name="arrow-right" weight="regular" size={18} /></span>
+      </a>
+      <a class="list-row" href={`${base}comparar/`}>
+        <div>
+          <h2 class="h-block" style="font-size:22px">Quando duas execuções são diferentes de fato</h2>
+          <p>Compare fatia por fatia e veja onde os intervalos de confiança se separam.</p>
+        </div>
+        <span class="go"><Icon name="arrow-right" weight="regular" size={18} /></span>
+      </a>
+      <a class="list-row" href="https://github.com/como-votam/teor/tree/main/analyses">
+        <div>
+          <h2 class="h-block" style="font-size:22px">Notebooks reprodutíveis</h2>
+          <p>Coleta, cobertura, sensibilidade ao prompt, previsão e paridade, direto dos artefatos públicos.</p>
+        </div>
+        <span class="go"><Icon name="arrow-up-right" weight="regular" size={18} /></span>
+      </a>
+    </div>
+  </section>
 </Layout>

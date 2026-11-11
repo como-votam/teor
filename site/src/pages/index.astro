@@ -1,572 +1,659 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Icon from '../components/Icon.astro';
-import CitableFacts from '../components/seo/CitableFacts.astro';
-import { data, tracks, slug, taskNames, modeNames, chamberNames, modelName } from '../data';
+import { data, tracks } from '../data';
+import { taskNames, modeNames, chamberNames } from '../data/labels';
+import {
+  runs,
+  models,
+  principalSlices,
+  trackCounts,
+  itemSummaries,
+  liftSummary,
+  clientPayload,
+} from '../data/derived';
+import { faqs, trackDetails } from '../lib/seo/content';
+import { serializeJson } from '../lib/seo/config';
+import { seqColor, liftColor, pct, pp, int } from '../lib/format';
+import { tipData, seriesColor } from '../lib/charts';
+import { contextSummary, answerTokens, hostOf } from '../lib/item-view';
 const base = import.meta.env.BASE_URL;
-const cohorts = [...new Set(data.results.map((r) => `${r.dataset_hash}:${r.protocol_hash}`))];
-const metrics = data.results.flatMap((r) =>
-  r.metrics.filter((m) => m.score && m.category !== 'experimental').map((m) => ({ r, m })),
-);
-const tasks = [...new Set(metrics.map(({ m }) => m.task))];
-const splits = [...new Set(metrics.map(({ m }) => m.split || ''))];
-const temporal = [...new Set(metrics.map(({ m }) => m.temporal_quality || ''))];
-const modelCount = new Set(data.results.map((r) => r.model)).size;
-const baselineOnly =
-  data.results.length > 0 && data.results.every((r) => r.model.startsWith('baseline/'));
-const first =
-  metrics.find(
-    ({ m }) => m.task === 'type' && m.mode === 'with_context' && m.chamber === 'camara',
-  ) || metrics[0];
-import { faqs } from '../lib/seo/content';
+
+// Espécime do hero: itens reais do quiz, com a nota do primeiro modelo naquela fatia.
+const lead = models[0];
+const specimens = data.quiz.map((item) => {
+  const slice = principalSlices.find(
+    (s) => s.task === item.task && s.chamber === item.chamber && s.mode === item.mode,
+  );
+  const cell = lead && slice?.cells[lead.id];
+  return {
+    id: item.id,
+    track: item.track,
+    task: taskNames[item.task] || item.task,
+    chamber: chamberNames[item.chamber] || item.chamber,
+    ref: item.evidence[0]?.ref || '',
+    url: item.evidence[0]?.url || '',
+    host: hostOf(item.evidence[0]?.url || ''),
+    prompt: item.prompts[0],
+    context: contextSummary(item),
+    answer: answerTokens(item),
+    model: cell && lead ? `${lead.label} acerta ${pct(cell.mean)} nesta tarefa` : '',
+  };
+});
+const first = specimens[0];
+
+// Matriz: linhas = tarefa × modo, colunas = execuções; uma tabela por casa.
+const columns = runs;
+const chambers = ['camara', 'senado'];
+const rowKeys = [...new Set(principalSlices.map((s) => `${s.task}|${s.mode}`))];
+const rowsByTrack = tracks
+  .map(([id, name]) => ({
+    id,
+    name,
+    rows: rowKeys
+      .filter((k) => principalSlices.find((s) => `${s.task}|${s.mode}` === k)?.track === id)
+      .map((k) => {
+        const [task, mode] = k.split('|');
+        return { task, mode };
+      }),
+  }))
+  .filter((g) => g.rows.length);
+const sliceFor = (task: string, mode: string, chamber: string) =>
+  principalSlices.find((s) => s.task === task && s.mode === mode && s.chamber === chamber);
+
+const lifts = models.map((m) => ({ run: m, ...liftSummary(m.id) }));
+const modelCount = models.length;
+const totalItems = data.count;
+
+const pipeline = [
+  {
+    title: 'Coletar',
+    body: 'Baixa proposições, votações e tramitação das APIs oficiais para um snapshot selado por hash.',
+    code: [
+      ['c', '# snapshot de um mês, com cache por URL'],
+      ['p', 'uv run teor collect --start 2026-09-01 --end 2026-09-30 \\'],
+      ['o', '    --output data/setembro-2026'],
+      ['p', 'uv run teor snapshot verify data/setembro-2026'],
+      ['k', '✓ manifesto selado · hashes conferem'],
+    ],
+  },
+  {
+    title: 'Construir',
+    body: 'Gera os itens com três variantes de prompt, separa famílias entre dev e teste e grava o canário.',
+    code: [
+      ['c', '# itens públicos, splits e gabaritos privados'],
+      ['p', 'uv run teor build data/setembro-2026 --output data/benchmark'],
+      ['p', 'uv run teor validate data/benchmark/items.jsonl'],
+      ['k', `✓ ${int(totalItems)} itens públicos · 8 trilhas · 2 casas`],
+    ],
+  },
+  {
+    title: 'Avaliar',
+    body: 'Roda o modelo com teto de orçamento. Um preflight confere o formato das respostas antes do run inteiro.',
+    code: [
+      ['c', '# preflight automático: aborta se >15% vier fora do formato'],
+      ['p', 'uv run teor run data/benchmark/test-lite.jsonl \\'],
+      ['o', '    --model provider/model --prices config/prices.json \\'],
+      ['o', '    --budget 10 --output data/previsoes.jsonl'],
+    ],
+  },
+  {
+    title: 'Pontuar',
+    body: 'Calcula nota por fatia com bootstrap por família e gera o JSON que acompanha o pull request.',
+    code: [
+      ['c', '# IC 95%, 2.000 reamostragens por família'],
+      ['p', 'uv run teor score data/benchmark/test-lite.jsonl data/previsoes.jsonl \\'],
+      ['o', '    --output reports/modelo.json'],
+      ['p', 'uv run teor submission validate reports/modelo.json'],
+    ],
+  },
+];
+const examplePrompt = (track: string) => itemSummaries.find((i) => i.track === track)?.prompt || '';
+const trackTasks = (track: string) => [
+  ...new Set(itemSummaries.filter((i) => i.track === track).map((i) => taskNames[i.task] || i.task)),
+];
+const trackPayload = tracks.map(([id, name, desc]) => ({
+  id,
+  name,
+  desc,
+  n: trackCounts[id],
+  ...trackDetails[id],
+  tasks: trackTasks(id),
+  example: examplePrompt(id),
+}));
+const firstTrack = trackPayload[0];
 ---
 
 <Layout title="A IA entende o Congresso?">
-  <section class="hero">
-    <div class="hero-copy">
-      <p class="eyebrow">
-        <span class="live-dot"></span> Benchmark aberto do Legislativo brasileiro
-      </p>
-      <h1>
-        A IA entende
-        <br />o Congresso?
+  <section class="shell home-hero">
+    <div>
+      <p class="eyebrow">Benchmark aberto · Câmara e Senado</p>
+      <h1 class="h-display">
+        O Congresso brasileiro como <em>prova</em> para modelos de linguagem.
       </h1>
       <p class="lead">
-        Entre uma resposta convincente e uma resposta correta, existe a fonte. O Teor testa modelos
-        de linguagem com textos, regras e votações reais.
+        {int(totalItems)} perguntas tiradas de registros oficiais da Câmara e do Senado, em oito trilhas
+        medidas separadamente. Cada nota sai com intervalo de confiança, e cada gabarito aponta a fonte.
       </p>
-      <a class="button" href="#comparar">
-        Explorar os resultados <Icon name="arrow" />
-      </a>
-      <p class="hero-footnote">Câmara e Senado · Protocolo público · Sem nota única</p>
-    </div>
-    <aside class="benchmark-map" aria-label="Mapa interativo das oito trilhas">
-      <div class="panel-heading">
-        <span class="eyebrow">Anatomia do benchmark</span>
-        <span class="badge">8 trilhas</span>
-      </div>
-      <svg
-        class="track-map"
-        viewBox="0 0 440 230"
-        role="img"
-        aria-label="Oito setores representam as trilhas do benchmark, inspirados no hemiciclo do Como Votam. Não representam votos."
-      >
-        {tracks.map(([id], index) => (
-          <g data-sector={id} class:list={['map-sector', { selected: index === 0 }]}>
-            {Array.from({ length: 5 }, (_, ring) =>
-              Array.from({ length: 5 }, (_, dot) => {
-                const angle = Math.PI + ((index * 5 + dot + 0.5) * Math.PI) / 40;
-                const radius = 102 + ring * 24;
-                return (
-                  <circle
-                    cx={220 + Math.cos(angle) * radius}
-                    cy={214 + Math.sin(angle) * radius}
-                    r={4}
-                  />
-                );
-              }),
-            )}
-          </g>
-        ))}
-        <text x="220" y="168" text-anchor="middle" class="map-number">
-          8
-        </text>
-        <text x="220" y="195" text-anchor="middle" class="map-label">
-          capacidades, uma a uma
-        </text>
-      </svg>
-      <div class="map-tabs" role="group" aria-label="Selecionar trilha">
-        {tracks.map(([id, name], i) => (
-          <button
-            class="map-tab"
-            data-map-track={id}
-            aria-pressed={i === 0}
-            aria-label={`${id} · ${name}`}
-          >
-            {id}
-          </button>
-        ))}
-      </div>
-      <div class="map-description" aria-live="polite">
-        <strong id="map-title">A · Texto</strong>
-        <p id="map-copy">Tipos, autoria e referências explícitas.</p>
-        <a class="text-link" id="map-link" href="#trilha-A">
-          Conhecer esta trilha <Icon name="arrow" size={16} />
+      <div class="hero-actions">
+        <a class="btn btn--lg" href="#resultados">
+          Ver os resultados <Icon name="arrow-down" weight="regular" size={18} />
         </a>
+        <a class="btn btn--ghost btn--lg" href={`${base}explorador/`}>Abrir os itens</a>
       </div>
-      <script type="application/json" id="track-data" set:html={JSON.stringify(tracks)} />
-    </aside>
+      <div class="hero-cmd">
+        <code>git clone https://github.com/como-votam/teor && cd teor && uv sync</code>
+        <button
+          class="icon-btn copy"
+          type="button"
+          data-copy="git clone https://github.com/como-votam/teor && cd teor && uv sync"
+          aria-label="Copiar comando"
+        >
+          <Icon name="copy" weight="regular" size={16} class="ico-copy" />
+          <Icon name="check" weight="bold" size={16} class="ico-check" />
+        </button>
+      </div>
+    </div>
+
+    {
+      first && (
+        <div class="specimen" data-specimen aria-roledescription="carrossel" aria-label="Itens reais do benchmark">
+          <span class="specimen-progress" aria-hidden="true" style="--t:7s" />
+          <div class="specimen-bar">
+            <span class="left">
+              <span class="code-tag" data-s="track">
+                {first.track}
+              </span>
+              <span>
+                <span data-s="task">{first.task}</span> · <span data-s="chamber">{first.chamber}</span>
+              </span>
+            </span>
+            <span class="ref" data-s="ref">
+              {first.ref}
+            </span>
+          </div>
+          <div class="specimen-body" aria-live="polite">
+            <div>
+              <p class="specimen-label">Pergunta</p>
+              <p class="specimen-q" data-s="prompt">
+                {first.prompt}
+              </p>
+            </div>
+            <div>
+              <p class="specimen-label">Contexto entregue ao modelo</p>
+              <p class="specimen-ctx" data-s="context">
+                {first.context}
+              </p>
+            </div>
+            <div>
+              <p class="specimen-label">Gabarito oficial</p>
+              <div class="specimen-answer" data-s="answer">
+                {first.answer.map((a) => (
+                  <span class="answer-token">{a}</span>
+                ))}
+              </div>
+            </div>
+            <p class="fine" data-s="model">
+              {first.model}
+            </p>
+          </div>
+          <div class="specimen-foot">
+            <a class="link" data-s="url" href={first.url} target="_blank" rel="noopener">
+              Fonte: <span data-s="host">{first.host}</span>
+            </a>
+            <div class="specimen-dots" role="group" aria-label="Escolher item">
+              {specimens.map((s, i) => (
+                <button
+                  type="button"
+                  data-go={i}
+                  aria-label={`Item ${i + 1} de ${specimens.length}`}
+                  aria-current={i === 0 ? 'true' : 'false'}
+                />
+              ))}
+            </div>
+          </div>
+          <script type="application/json" id="specimens" set:html={serializeJson(specimens)} />
+        </div>
+      )
+    }
   </section>
-  <div class="stat-strip" aria-label="Situação do benchmark">
-    <div>
-      <Icon name="layers" />
-      <span>
-        <strong>8</strong>
-        <small>trilhas de avaliação</small>
-      </span>
-    </div>
-    <div>
-      <Icon name="book" />
-      <span>
-        <strong>2</strong>
-        <small>casas legislativas</small>
-      </span>
-    </div>
-    <div>
-      <Icon name="chart" />
-      <span>
-        <strong>{modelCount.toLocaleString('pt-BR')}</strong>
-        <small>{baselineOnly ? 'baselines publicados' : 'modelos publicados'}</small>
-      </span>
-    </div>
-    <div>
-      <Icon name="search" />
-      <span>
-        <strong>{data.count ? data.count.toLocaleString('pt-BR') : '—'}</strong>
-        <small>{data.count ? 'itens públicos exportados' : 'itens aguardando exportação'}</small>
-      </span>
+
+  <div class="shell">
+    <div class="stat-strip" aria-label="O benchmark em números">
+      <div>
+        <div class="stat-value">{int(totalItems)}</div>
+        <div class="stat-label">itens públicos, cada um com fonte oficial</div>
+      </div>
+      <div>
+        <div class="stat-value">8</div>
+        <div class="stat-label">trilhas, sem nota que junte todas</div>
+      </div>
+      <div>
+        <div class="stat-value">{int(principalSlices.length)}</div>
+        <div class="stat-label">fatias comparáveis de tarefa, casa e modo</div>
+      </div>
+      <div>
+        <div class="stat-value">{runs.length}</div>
+        <div class="stat-label">
+          execuções publicadas: {modelCount}
+          {modelCount === 1 ? ' modelo' : ' modelos'} e {runs.length - modelCount} referências
+        </div>
+      </div>
     </div>
   </div>
-  <CitableFacts />
-  <section id="comparar" class="comparison-section" data-reveal>
-    <div class="section-heading">
+
+  <section id="resultados" class="shell section">
+    <div class="section-head" data-reveal>
       <div>
-        <p class="eyebrow">01 / Resultados</p>
-        <h2>Compare a mesma pergunta.</h2>
-        <p>Escolha um recorte. Veja a nota, a incerteza e a cobertura de cada execução.</p>
+        <p class="eyebrow">Resultados</p>
+        <h2 class="h-section">Matriz de capacidades</h2>
+        <p class="body">
+          Uma linha por tarefa e modo, uma coluna por execução. Troque para “acima da referência” e
+          cada célula mostra a distância até o melhor respondedor sem modelo de linguagem.
+        </p>
       </div>
-      <a class="text-link" href={`${base}metodologia/`}>
-        Como ler as métricas <Icon name="arrow" size={16} />
+      <a class="go" href={`${base}modelos/`}>
+        Todas as execuções <Icon name="arrow-right" weight="regular" size={16} />
       </a>
     </div>
-    {baselineOnly && (
-      <div class="notice">
-        <Icon name="info" />
-        <p>
-          <strong>Primeiro, as referências.</strong> Os resultados publicados são baselines
-          determinísticos. Avaliações de modelos de linguagem ainda não foram publicadas.
-        </p>
-        <a href={`${base}contribuir/`}>Submeter avaliação ↗</a>
-      </div>
-    )}
-    {data.results.length ? (
-      <div class="comparison-panel">
-        <div class="comparison-toolbar">
-          <div class="segmented" role="group" aria-label="Visualização dos resultados">
-            <button data-view="table" aria-pressed="true">
-              <Icon name="layers" size={16} /> Tabela
-            </button>
-            <button data-view="chart" aria-pressed="false">
-              <Icon name="chart" size={16} /> Gráfico
-            </button>
-          </div>
-          <div class="toolbar-actions">
-            <button id="reset-filters" class="ghost">
-              <Icon name="reset" size={16} /> Limpar filtros
-            </button>
-            <button id="export-results" class="ghost">
-              <Icon name="download" size={16} /> CSV
-            </button>
-          </div>
-        </div>
-        <div class="filters benchmark-filters">
-          <label>
-            Trilha
-            <select id="track">
-              <option value="">Todas</option>
-              {tracks.map(([id, name]) => (
-                <option value={id} selected={id === first?.m.track}>
-                  {id} · {name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Tarefa
-            <select id="task">
-              <option value="">Todas</option>
-              {tasks.map((task) => (
-                <option value={task} selected={task === first?.m.task}>
-                  {taskNames[task] || task}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Casa
-            <select id="chamber">
-              <option value="">Todas</option>
-              <option value="camara" selected={first?.m.chamber === 'camara'}>
-                Câmara
-              </option>
-              <option value="senado" selected={first?.m.chamber === 'senado'}>
-                Senado
-              </option>
-            </select>
-          </label>
-          <label>
-            Modo
-            <select id="mode">
-              <option value="">Todos</option>
-              {Object.entries(modeNames).map(([id, name]) => (
-                <option value={id} selected={id === first?.m.mode}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <details class="advanced-filters">
-            <summary>
-              Mais filtros <span aria-hidden="true">+</span>
-            </summary>
-            <div class="filters">
-              <label>
-                Modelo
-                <select id="weights">
-                  <option value="">Todos</option>
-                  <option value="open">Pesos abertos</option>
-                  <option value="closed">Pesos fechados</option>
-                  <option value="brazilian">Brasileiro</option>
-                </select>
-              </label>
-              <label>
-                Desde
-                <input id="since" type="date" />
-              </label>
-              <label>
-                Conjunto e protocolo
-                <select id="cohort">
-                  {cohorts.map((c) => (
-                    <option value={c}>
-                      {c
-                        .split(':')
-                        .map((h) => h.slice(0, 8))
-                        .join(' / ')}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Divisão
-                <select id="split">
-                  <option value="">Todas</option>
-                  {splits.map((s) => (
-                    <option value={s} selected={s === first?.m.split}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Qualidade temporal
-                <select id="temporal">
-                  <option value="">Todas</option>
-                  {temporal.map((t) => (
-                    <option value={t} selected={t === first?.m.temporal_quality}>
-                      {t === 'retrospective'
-                        ? 'Retrospectivo'
-                        : t === 'not_applicable'
-                          ? 'Não se aplica'
-                          : t || 'Não informada'}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </details>
-        </div>
-        <div class="result-meta">
-          <p id="filter-status" role="status"></p>
-          <span class="mono">IC 95% · bootstrap por família</span>
-        </div>
-        <p id="comparison-warning" class="notice" hidden>
-          Este recorte reúne tarefas ou condições diferentes. Leia cada resultado separadamente; as
-          notas não formam um ranking único.
-        </p>
-        <div
-          class="table-wrap"
-          id="table-view"
-          tabindex="0"
-          role="region"
-          aria-label="Comparação por trilha"
-        >
-          <p class="table-scroll-hint">
-            Deslize a tabela para ver as notas, a cobertura e a verificação →
-          </p>
-          <table id="leaderboard">
-            <caption class="sr-only">
-              Resultados por tarefa, com intervalo de confiança de 95%. Compare o mesmo protocolo e
-              conjunto.
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Modelo / referência</th>
-                <th scope="col">Trilha / tarefa</th>
-                <th scope="col">Casa / modo</th>
-                <th scope="col" aria-sort="descending">
-                  <button class="sort-button" id="sort-score" aria-label="Ordenar por nota">
-                    Nota e IC 95%{' '}
-                    <span id="sort-indicator" aria-hidden="true">
-                      ↓
-                    </span>
+
+    {
+      runs.length ? (
+        <div class="panel" data-reveal style="--d:1">
+          <div class="toolbar">
+            <div class="group">
+              <div class="seg" role="radiogroup" aria-label="Casa legislativa" data-seg data-matrix-chamber>
+                {chambers.map((c, i) => (
+                  <button type="button" role="radio" aria-checked={String(i === 0)} data-value={c}>
+                    <span data-text={chamberNames[c]}>{chamberNames[c]}</span>
                   </button>
-                </th>
-                <th scope="col">Cobertura</th>
-                <th scope="col">Verificação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {metrics.map(({ r, m }) => (
-                <tr
-                  hidden={
-                    !!first &&
-                    (m.track !== first.m.track ||
-                      m.task !== first.m.task ||
-                      m.chamber !== first.m.chamber ||
-                      m.mode !== first.m.mode ||
-                      m.split !== first.m.split ||
-                      m.temporal_quality !== first.m.temporal_quality ||
-                      `${r.dataset_hash}:${r.protocol_hash}` !== cohorts[0])
-                  }
-                  data-track={m.track}
-                  data-task={m.task}
-                  data-chamber={m.chamber}
-                  data-mode={m.mode}
-                  data-split={m.split}
-                  data-temporal={m.temporal_quality}
-                  data-cohort={`${r.dataset_hash}:${r.protocol_hash}`}
-                  data-open={String(r.config.open_weights ?? '')}
-                  data-brazilian={String(r.config.brazilian ?? '')}
-                  data-date={r.created_at.slice(0, 10)}
-                  data-score={m.score!.mean}
-                  data-low={m.score!.ci95[0]}
-                  data-high={m.score!.ci95[1]}
-                  data-model={r.model}
-                >
-                  <td>
-                    <a class="model-link" href={`${base}modelos/${slug(r.model)}/`}>
-                      <span class="model-symbol">
-                        <Icon name="code" size={16} />
-                      </span>
-                      {modelName(r.model)}
-                      <span class="row-arrow" aria-hidden="true">
-                        ↗
-                      </span>
-                    </a>
-                    <small>
-                      {r.model.startsWith('baseline/')
-                        ? 'Baseline determinístico'
-                        : 'Modelo de linguagem'}
-                    </small>
-                  </td>
-                  <td>
-                    <span class="track-code">{m.track}</span> {taskNames[m.task] || m.task}
-                    <small>
-                      {m.split}
-                      {m.temporal_quality === 'retrospective' && ' · retrospectivo'}
-                    </small>
-                  </td>
-                  <td>
-                    {chamberNames[m.chamber || ''] || m.chamber}
-                    <small>{modeNames[m.mode || ''] || m.mode}</small>
-                  </td>
-                  <td>
-                    <strong class="score-number">
-                      {(m.score!.mean * 100).toLocaleString('pt-BR', {
-                        maximumFractionDigits: 1,
-                        minimumFractionDigits: 1,
-                      })}
-                      %
-                    </strong>
-                    <div class="score-bar" aria-hidden="true">
-                      <span style={`width:${m.score!.mean * 100}%`}></span>
-                    </div>
-                    <small>
-                      {m.score!.ci95.map((n) => (n * 100).toFixed(1).replace('.', ',')).join(' a ')}
-                      %
-                    </small>
-                  </td>
-                  <td>
-                    <strong>{(r.usage.coverage * 100).toFixed(1).replace('.', ',')}%</strong>
-                    <small>{r.complete ? 'Execução completa' : 'Execução incompleta'}</small>
-                  </td>
-                  <td>
-                    <span class="badge">{r.verification}</span>
-                  </td>
+                ))}
+              </div>
+              <div class="seg" role="radiogroup" aria-label="Valor exibido" data-seg data-matrix-view>
+                <button type="button" role="radio" aria-checked="true" data-value="score">
+                  <span data-text="Nota">Nota</span>
+                </button>
+                <button type="button" role="radio" aria-checked="false" data-value="lift">
+                  <span data-text="Acima da referência">Acima da referência</span>
+                </button>
+              </div>
+            </div>
+            <div class="group">
+              <div class="scale" data-scale="score">
+                <span>0</span>
+                <span class="scale-bar" aria-hidden="true">
+                  {[0, 1, 2, 3, 4, 5, 6].map((s) => (
+                    <i style={`background:var(--seq-${s})`} />
+                  ))}
+                </span>
+                <span>100%</span>
+              </div>
+              <div class="scale" data-scale="lift" hidden>
+                <span>abaixo</span>
+                <span class="scale-bar" aria-hidden="true">
+                  {[-0.6, -0.3, -0.1, 0, 0.1, 0.3, 0.6].map((d) => (
+                    <i style={`background:${liftColor(d).bg}`} />
+                  ))}
+                </span>
+                <span>acima</span>
+              </div>
+              <button class="btn btn--outline btn--sm" type="button" data-export>
+                <Icon name="download-simple" weight="regular" size={16} /> CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="matrix-wrap" tabindex="0" role="region" aria-label="Matriz de capacidades, role para os lados">
+            <table class="matrix" data-view="score">
+              <caption class="sr-only">
+                Nota por tarefa e modo para cada execução publicada. Clique numa linha para ver
+                intervalos de confiança.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Tarefa</th>
+                  {columns.map((r) => (
+                    <th scope="col" class:list={['col', { 'col--ref': r.kind === 'baseline' }]}>
+                      <a href={`${base}modelos/${r.slug}/`}>
+                        <span class={r.kind === 'baseline' ? 'swatch swatch--ref' : 'swatch'} style={`--c:${seriesColor(r.color)}`} />
+                        <span class="n">{r.label}</span>
+                        <small>{r.kind === 'baseline' ? 'referência' : r.org}</small>
+                      </a>
+                    </th>
+                  ))}
                 </tr>
+              </thead>
+              {chambers.map((chamber, ci) => (
+                <tbody data-chamber={chamber} hidden={ci !== 0}>
+                  {rowsByTrack.map((g) => (
+                    <>
+                      <tr class="group">
+                        <th colspan={columns.length + 1} scope="colgroup">
+                          <span class="code-tag">{g.id}</span>
+                          {g.name}
+                        </th>
+                      </tr>
+                      {g.rows.map(({ task, mode }) => {
+                        const slice = sliceFor(task, mode, chamber);
+                        return (
+                          <tr class="row">
+                            <th scope="row">
+                              {slice ? (
+                                <button type="button" class="row-btn" data-slice={slice.key}>
+                                  <span>
+                                    {taskNames[task] || task}
+                                    <span class="mode"> · {modeNames[mode] || mode}</span>
+                                  </span>
+                                </button>
+                              ) : (
+                                <span class="row-btn">
+                                  {taskNames[task] || task}
+                                  <span class="mode"> · {modeNames[mode] || mode}</span>
+                                </span>
+                              )}
+                            </th>
+                            {columns.map((r) => {
+                              const cell = slice?.cells[r.id];
+                              if (!slice || !cell)
+                                return (
+                                  <td class="empty" aria-label="Sem dados">
+                                    —
+                                  </td>
+                                );
+                              const s = seqColor(cell.mean);
+                              const lift = r.kind === 'model' && slice.floor !== null ? cell.mean - slice.floor : null;
+                              const l = lift === null ? { bg: '', fg: '' } : liftColor(lift);
+                              const thin = cell.families < 5;
+                              return (
+                                <td
+                                  tabindex="0"
+                                  class:list={[{ thin, ref: r.kind === 'baseline' }]}
+                                  style={`--cell-bg:${s.bg};--cell-fg:${s.fg};${l.bg ? `--lift-bg:${l.bg};--lift-fg:${l.fg}` : ''}`}
+                                  data-tip={tipData(
+                                    `${r.label} · ${taskNames[task] || task}`,
+                                    pct(cell.mean),
+                                    [
+                                      ['IC 95%', `${pct(cell.low)} a ${pct(cell.high)}`],
+                                      ['Respostas', int(cell.n)],
+                                      ['Famílias', int(cell.families)],
+                                      ...(lift !== null ? ([['Contra a melhor referência', pp(lift)]] as [string, string][]) : []),
+                                    ],
+                                    thin
+                                      ? `Só ${cell.families} ${cell.families === 1 ? 'família' : 'famílias'}: o intervalo informa pouco.`
+                                      : undefined,
+                                  )}
+                                >
+                                  <span data-v="score">{Math.round(cell.mean * 100)}</span>
+                                  <span data-v="lift">
+                                    {lift === null ? 'ref.' : `${lift > 0.004 ? '+' : lift < -0.004 ? '−' : '±'}${Math.abs(Math.round(lift * 100))}`}
+                                  </span>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </>
+                  ))}
+                </tbody>
               ))}
-            </tbody>
-          </table>
-        </div>
-        <div id="chart-view" class="chart-view" hidden>
-          <p class="chart-explanation">
-            O ponto marca a nota. A linha marca o intervalo de confiança de 95%.
+            </table>
+          </div>
+          <p class="note">
+            Valores em pontos percentuais. O ponto no canto da célula marca fatias com menos de cinco
+            famílias, em que o intervalo de confiança é largo ou degenerado. Tarefas experimentais e
+            diferenças pareadas da trilha H ficam nos perfis de cada execução.
           </p>
-          <div id="score-chart"></div>
-          <div class="chart-axis">
-            <span>0%</span>
-            <span>50%</span>
-            <span>100%</span>
+          {lifts.length > 0 && (
+            <div class="verdicts" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+              {lifts.map((l) => (
+                <div>
+                  <p class="fine" style="display:flex;align-items:center;gap:8px">
+                    <span class="swatch" style={`--c:${seriesColor(l.run.color)}`} /> {l.run.label}
+                  </p>
+                  <p style="margin-top:10px;font-size:15px;color:var(--color-ink)">
+                    <strong>{l.above}</strong> de {l.total} fatias com o intervalo inteiro acima da melhor
+                    referência; <strong>{l.below}</strong> abaixo; {l.overlap} indefinidas.
+                  </p>
+                  <div class="lift-bar" style="margin-top:12px" role="img" aria-label={`${l.above} acima, ${l.overlap} indefinidas, ${l.below} abaixo`}>
+                    <i class="up" style={`flex:${l.above}`} />
+                    <i class="eq" style={`flex:${l.overlap}`} />
+                    <i class="dn" style={`flex:${l.below}`} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div class="empty-state">
+          <Icon name="chart-scatter" size={32} />
+          <h3>Nenhuma execução publicada ainda</h3>
+          <p>As notas aparecem aqui depois da primeira execução documentada.</p>
+          <a class="btn" href={`${base}contribuir/`}>Avaliar um modelo</a>
+        </div>
+      )
+    }
+    <script type="application/json" id="payload" set:html={serializeJson(clientPayload)} />
+  </section>
+
+  <section class="tagline" aria-label="Princípio do Teor">
+    <div class="shell">
+      <p class="eyebrow" style="color:var(--color-brand-soft)">Por que assim</p>
+      <h2 class="tagline-text" data-tagline style="margin-top:20px">
+        Nenhuma nota sai daqui sem a tarefa, o intervalo e o registro oficial que a sustentam.
+      </h2>
+      <p class="tagline-foot">
+        Modelos erram com confiança, e uma média bonita esconde onde. Por isso o Teor publica cada
+        fatia em separado, deixa as referências triviais à vista e liga cada gabarito ao endpoint de
+        onde ele saiu.
+      </p>
+    </div>
+  </section>
+
+  <section id="trilhas" class="shell section">
+    <div class="section-head" data-reveal>
+      <div>
+        <p class="eyebrow">O que medimos</p>
+        <h2 class="h-section">Oito trilhas, uma capacidade em cada</h2>
+        <p class="body">
+          Ler um registro, aplicar uma regra, contar votos, seguir a tramitação, prever, citar, usar
+          ferramentas e manter a resposta quando só o partido muda.
+        </p>
+      </div>
+      <a class="go" href={`${base}trilhas/`}>
+        Detalhes de cada trilha <Icon name="arrow-right" weight="regular" size={16} />
+      </a>
+    </div>
+
+    <div data-reveal style="--d:1">
+      <div class="composition" data-composition role="group" aria-label="Itens do conjunto por trilha">
+        {
+          trackPayload.map((t, i) => (
+            <button
+              type="button"
+              style={`flex:${t.n};--i:${i}`}
+              data-track={t.id}
+              data-tip={tipData(`Trilha ${t.id} · ${t.name}`, `${int(t.n)} itens`, [
+                ['Parte do conjunto', pct(t.n / Math.max(1, totalItems))],
+              ])}
+              aria-label={`${t.id}, ${t.name}: ${t.n} itens`}
+            >
+              {t.n / totalItems > 0.06 && <span class="lbl">{t.id}</span>}
+            </button>
+          ))
+        }
+      </div>
+      <p class="note" style="margin-top:10px">
+        A trilha A concentra a maior parte dos itens porque proposições são o registro mais abundante.
+        Trilhas com poucos itens aparecem com intervalos largos na matriz.
+      </p>
+    </div>
+
+    <div class="track-explorer" style="margin-top:32px">
+      <div class="track-list" role="tablist" aria-label="Trilhas" aria-orientation="vertical" data-reveal>
+        {
+          trackPayload.map((t, i) => (
+            <button
+              class="track-row"
+              type="button"
+              role="tab"
+              id={`tab-${t.id}`}
+              aria-controls="track-panel"
+              aria-selected={String(i === 0)}
+              tabindex={i === 0 ? 0 : -1}
+              data-track={t.id}
+            >
+              <span class="code-tag">{t.id}</span>
+              <span>
+                <span class="name">{t.name}</span>
+                <span class="desc">{t.desc}</span>
+              </span>
+              <span class="n">{int(t.n)}</span>
+            </button>
+          ))
+        }
+      </div>
+      <div class="track-detail" data-reveal style="--d:2">
+        <div class="panel" id="track-panel" role="tabpanel" aria-labelledby={`tab-${firstTrack.id}`}>
+          <div class="track-detail-body" data-track-body>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span class="code-tag" style="width:36px;height:36px;font-size:16px" data-t="id">
+                {firstTrack.id}
+              </span>
+              <h3 class="h-block" data-t="name">{firstTrack.name}</h3>
+            </div>
+            <dl class="dl">
+              <div>
+                <dt>Pergunta de avaliação</dt>
+                <dd data-t="question">{firstTrack.question}</dd>
+              </div>
+              <div>
+                <dt>Como medimos</dt>
+                <dd data-t="method">{firstTrack.method}</dd>
+              </div>
+              <div>
+                <dt>O que a nota não diz</dt>
+                <dd data-t="limitation">{firstTrack.limitation}</dd>
+              </div>
+              <div>
+                <dt>Exemplo de pergunta</dt>
+                <dd data-t="example" style="font-family:'Newsreader',serif;font-size:19px;line-height:1.35;color:var(--color-ink)">
+                  {firstTrack.example}
+                </dd>
+              </div>
+            </dl>
+            <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:26px">
+              <a class="go" data-t="explore" href={`${base}explorador/?track=${firstTrack.id}`}>
+                Ver os itens <Icon name="arrow-right" weight="regular" size={16} />
+              </a>
+              <a class="go" data-t="page" href={`${base}trilhas/${firstTrack.id.toLowerCase()}/`}>
+                Página da trilha <Icon name="arrow-right" weight="regular" size={16} />
+              </a>
+            </div>
           </div>
         </div>
-        <div id="filter-empty" class="empty" hidden>
-          <Icon name="search" size={32} />
-          <h3>Nenhum resultado neste recorte</h3>
-          <p>Altere a tarefa ou amplie os filtros para consultar as execuções publicadas.</p>
-          <button class="outline" id="empty-reset">
-            Mostrar todos os resultados
-          </button>
+      </div>
+    </div>
+    <script type="application/json" id="track-payload" set:html={serializeJson(trackPayload)} />
+  </section>
+
+  <section class="shell section rule-top" id="como-funciona">
+    <div class="pipeline">
+      <div data-reveal>
+        <p class="eyebrow">Reproduzir</p>
+        <h2 class="h-section" style="margin-top:14px">Do endpoint oficial ao JSON de métricas</h2>
+        <p class="body" style="margin-top:12px">
+          Tudo roda na sua máquina com <code class="mono">uv</code>. Coleta e construção não pedem chave
+          de API; só a avaliação do modelo gasta tokens, e com teto definido por você.
+        </p>
+        <div class="steps" role="tablist" aria-label="Etapas do pipeline" style="margin-top:28px">
+          {
+            pipeline.map((step, i) => (
+              <button
+                class="step"
+                type="button"
+                role="tab"
+                aria-selected={String(i === 0)}
+                tabindex={i === 0 ? 0 : -1}
+                aria-controls="term"
+                data-step={i}
+              >
+                <span class="num">{String(i + 1).padStart(2, '0')}</span>
+                <span>
+                  <h3>{step.title}</h3>
+                  <p>{step.body}</p>
+                </span>
+              </button>
+            ))
+          }
         </div>
-        <div class="panel-footnote">
-          <Icon name="info" size={16} />
-          <span>
-            A cobertura registra respostas recebidas. A verificação indica como o resultado foi
-            conferido.
+      </div>
+      <div data-reveal style="--d:1;align-self:center">
+        <div class="term" id="term" role="tabpanel">
+          <div class="term-bar">
+            <span class="lights" aria-hidden="true"><i /><i /><i /></span>
+            <span data-term-title>teor · {pipeline[0].title.toLowerCase()}</span>
+            <button class="icon-btn copy" type="button" data-copy data-copy-target="#term-cmds" aria-label="Copiar comandos">
+              <Icon name="copy" weight="regular" size={16} class="ico-copy" />
+              <Icon name="check" weight="bold" size={16} class="ico-check" />
+            </button>
+          </div>
+          <pre data-term tabindex="0" aria-label="Comandos"><code>{pipeline[0].code.map(([k, line]) => (
+            <span class={k}>{k === 'p' ? '$ ' : ''}{line}{'\n'}</span>
+          ))}</code></pre>
+          <span id="term-cmds" hidden>
+            {pipeline[0].code.filter(([k]) => k === 'p' || k === 'o').map(([, l]) => l).join('\n')}
           </span>
         </div>
       </div>
-    ) : (
-      <div class="empty">
-        <Icon name="chart" size={32} />
-        <h3>Avaliações ainda não publicadas</h3>
-        <p>As notas aparecerão depois de uma execução documentada.</p>
-        <a class="button" href={`${base}contribuir/`}>
-          Como submeter um resultado <Icon name="arrow" />
+    </div>
+    <script type="application/json" id="pipeline" set:html={serializeJson(pipeline)} />
+  </section>
+
+  <section id="perguntas" class="shell section rule-top">
+    <div class="split">
+      <div data-reveal>
+        <p class="eyebrow">Dúvidas</p>
+        <h2 class="h-section" style="margin-top:14px">Antes de citar um número</h2>
+        <a class="go" style="margin-top:20px" href={`${base}metodologia/`}>
+          Metodologia completa <Icon name="arrow-right" weight="regular" size={16} />
         </a>
       </div>
-    )}
+      <div class="faq" data-reveal style="--d:1">
+        {
+          faqs.map(([q, a]) => (
+            <details>
+              <summary>
+                {q}
+                <span class="plus" aria-hidden="true" />
+              </summary>
+              <p>{a}</p>
+            </details>
+          ))
+        }
+      </div>
+    </div>
   </section>
-  <section id="trilhas" class="tracks-section" data-reveal>
-    <div class="section-heading">
+
+  <div class="shell">
+    <div class="cta-band">
       <div>
-        <p class="eyebrow">02 / O que medimos</p>
-        <h2>Uma capacidade por vez.</h2>
-        <p>Oito trilhas para separar acertos, limites e perguntas ainda sem resposta.</p>
+        <h2>Rode o Teor no seu modelo.</h2>
+        <p>Protocolo aberto, preflight de formato e teto de gasto. O resultado entra por pull request.</p>
       </div>
-      <div class="track-controls segmented" role="group" aria-label="Filtrar trilhas">
-        <button data-track-group="all" aria-pressed="true">
-          Todas
-        </button>
-        <button data-track-group="understand" aria-pressed="false">
-          Compreensão
-        </button>
-        <button data-track-group="other" aria-pressed="false">
-          Outras capacidades
-        </button>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <a class="btn btn--lg" href={`${base}contribuir/`}>
+          Avaliar um modelo <Icon name="arrow-right" weight="regular" size={18} />
+        </a>
+        <a class="btn btn--outline btn--lg" href="https://github.com/como-votam/teor">
+          <Icon name="github-logo" weight="regular" size={18} /> GitHub
+        </a>
       </div>
     </div>
-    <div class="track-grid">
-      {tracks.map(([id, name, description], index) => (
-        <article
-          class="track"
-          id={`trilha-${id}`}
-          data-track-category={index < 4 ? 'understand' : 'other'}
-        >
-          <div class="track-top">
-            <span class="track-code">{id}</span>
-            <Icon
-              name={['book', 'layers', 'chart', 'arrow', 'chart', 'check', 'code', 'layers'][index]}
-              size={24}
-            />
-          </div>
-          <h3>{name}</h3>
-          <p>{description}</p>
-          <details>
-            <summary>
-              O que observar <span aria-hidden="true">+</span>
-            </summary>
-            <p>
-              {
-                [
-                  'O modelo identifica tipos de proposição, autoria e referências que aparecem no texto? A informação ausente também precisa ser reconhecida.',
-                  'A resposta aplica o procedimento e o quórum corretos? A regra precisa ter vigência documentada para o caso avaliado.',
-                  'A contagem corresponde ao registro oficial? Placar e votos individuais só são avaliados quando publicados pela fonte.',
-                  'O modelo reconstrói a ordem dos órgãos e as mudanças de tramitação a partir do histórico apresentado?',
-                  'As probabilidades respeitam o corte temporal? Casos retrospectivos não demonstram previsão de eventos futuros.',
-                  'A fonte citada existe e sustenta a afirmação? Localizar um trecho não substitui a revisão humana da fidelidade.',
-                  'O modelo consulta uma API congelada e usa a resposta corretamente? O ambiente deve ser o mesmo entre execuções.',
-                  'A resposta muda entre cenários pareados? A diferença é examinada separadamente, sem compor uma nota geral.',
-                ][index]
-              }
-            </p>
-            <a href={`${base}explorador/?track=${id}`}>Explorar itens desta trilha →</a>
-            <br />
-            <a href={`${base}trilhas/${id.toLowerCase()}/`}>Métricas e limites da trilha →</a>
-          </details>
-        </article>
-      ))}
-    </div>
-  </section>
-  <section class="tagline-section">
-    <p class="eyebrow">O princípio do Teor</p>
-    <h2 class="tagline">
-      {'Responder bem é uma coisa.'.split(' ').map((word, i) => (
-        <span style={`--word-delay:${i * 45}ms`}>{word} </span>
-      ))}
-      <br />
-      {'Sustentar a resposta é outra.'.split(' ').map((word, i) => (
-        <span style={`--word-delay:${(i + 5) * 45}ms`}>{word} </span>
-      ))}
-    </h2>
-    <p>Por isso, nenhuma nota vem sozinha. Ela vem com tarefa, protocolo, cobertura e evidência.</p>
-  </section>
-  <section class="participate-section" data-reveal>
-    <div class="section-heading">
-      <div>
-        <p class="eyebrow">03 / Entre no experimento</p>
-        <h2>Confira por conta própria.</h2>
-      </div>
-    </div>
-    <div class="action-grid">
-      <a class="action-card" href={`${base}quiz/`}>
-        <Icon name="quiz" size={32} />
-        <h3>Teste você</h3>
-        <p>Responda aos itens públicos e confira o gabarito com a fonte oficial.</p>
-        <span class="text-link">
-          Começar o quiz <Icon name="arrow" />
-        </span>
-      </a>
-      <a class="action-card" href={`${base}explorador/`}>
-        <Icon name="search" size={32} />
-        <h3>Abra a pergunta</h3>
-        <p>Consulte contexto, resposta esperada e evidências de cada item.</p>
-        <span class="text-link">
-          Explorar o conjunto <Icon name="arrow" />
-        </span>
-      </a>
-      <a class="action-card" href={`${base}contribuir/`}>
-        <Icon name="code" size={32} />
-        <h3>Avalie um modelo</h3>
-        <p>Execute o protocolo e envie resultados que outras pessoas possam reproduzir.</p>
-        <span class="text-link">
-          Preparar uma submissão <Icon name="arrow" />
-        </span>
-      </a>
-    </div>
-  </section>
-  <section id="perguntas" class="faq-section" data-reveal>
-    <div>
-      <p class="eyebrow">Antes de concluir</p>
-      <h2>
-        O que a nota
-        <br />
-        não diz sozinha.
-      </h2>
-      <a class="text-link" href={`${base}metodologia/`}>
-        Ler a metodologia <Icon name="arrow" />
-      </a>
-    </div>
-    <div>
-      {faqs.map(([question, answer]) => (
-        <details>
-          <summary>
-            {question}
-            <span aria-hidden="true">+</span>
-          </summary>
-          <p>{answer}</p>
-        </details>
-      ))}
-    </div>
-  </section>
+  </div>
 </Layout>
-<script src="../scripts/benchmark.ts"></script>
+
+<script>
+  import '../scripts/home.ts';
+</script>

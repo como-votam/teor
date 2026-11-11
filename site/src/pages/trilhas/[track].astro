@@ -1,9 +1,13 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Breadcrumbs from '../../components/seo/Breadcrumbs.astro';
+import Icon from '../../components/Icon.astro';
 import { tracks } from '../../data';
+import { taskNames, modeNames, chamberNames } from '../../data/labels';
 import { trackDetails } from '../../lib/seo/content';
-import { urls } from '../../lib/seo/config';
+import { runs, slices, itemSummaries, trackCounts } from '../../data/derived';
+import { forestHTML, seriesColor, tipData } from '../../lib/charts';
+import { pct, int } from '../../lib/format';
 export function getStaticPaths() {
   return tracks.map(([id, name, description]) => ({
     params: { track: id.toLowerCase() },
@@ -11,34 +15,119 @@ export function getStaticPaths() {
   }));
 }
 const { id, name, description } = Astro.props;
+const base = import.meta.env.BASE_URL;
 const details = trackDetails[id];
+const mine = slices.filter((s) => s.track === id);
+const index = tracks.findIndex((t) => t[0] === id);
+const prev = tracks[index - 1];
+const next = tracks[index + 1];
+const examples = itemSummaries.filter((i) => i.track === id).slice(0, 4);
+const charts = mine.map((s) => ({
+  s,
+  html: forestHTML(
+    runs
+      .filter((r) => s.cells[r.id])
+      .sort((a, b) => s.cells[b.id].mean - s.cells[a.id].mean)
+      .map((r) => {
+        const c = s.cells[r.id];
+        return {
+          label: r.label,
+          sub: r.kind === 'baseline' ? 'referência' : '',
+          floor: s.floor,
+          points: [{ mean: c.mean, low: c.low, high: c.high, color: seriesColor(r.color), ref: r.kind === 'baseline', variants: c.variants }],
+          tip: tipData(r.label, pct(c.mean), [['IC 95%', `${pct(c.low)} a ${pct(c.high)}`], ['Respostas · famílias', `${c.n} · ${c.families}`]]),
+          href: `${base}modelos/${r.slug}/`,
+        };
+      }),
+    { labelWidth: '30%' },
+  ),
+}));
 ---
 
 <Layout title={`Trilha ${id}: ${name}`}>
   <Breadcrumbs />
-  <article class="prose">
-    <p class="eyebrow">Trilha {id} / Benchmark legislativo</p>
-    <h1>{name}</h1>
-    <p>{description}</p>
-    <h2>Pergunta de avaliação</h2>
-    <p>{details.question}</p>
-    <h2>Como é medida</h2>
-    <p>{details.method}</p>
-    <h2>Limites de interpretação</h2>
-    <p>{details.limitation}</p>
-    <p>
-      A comparação exige a mesma tarefa, casa, modo, divisão, qualidade temporal, conjunto e
-      protocolo. O resultado desta trilha não é somado às outras capacidades.
-    </p>
-    <p>
-      <a href={urls.path(`?track=${id}&task=&chamber=&mode=&split=&temporal=`)}>
-        Consultar resultados da trilha
-      </a>{' '}
-      · <a href={urls.path(`explorador/?track=${id}`)}>Explorar itens</a> ·{' '}
-      <a href={urls.path('metodologia/')}>Ler o protocolo completo</a>
-    </p>
-    <p>
-      <a href={urls.path('trilhas/')}>Voltar às oito trilhas →</a>
-    </p>
-  </article>
+  <section class="shell page-hero">
+    <p class="eyebrow">Trilha {id} · {int(trackCounts[id] || 0)} itens</p>
+    <h1 class="h-page" style="display:flex;align-items:center;gap:18px">
+      <span class="code-tag" style="width:52px;height:52px;font-size:24px;border-radius:6px">{id}</span>
+      {name}
+    </h1>
+    <p class="sub">{description}</p>
+  </section>
+
+  <section class="shell" style="padding-bottom:40px">
+    <div class="split">
+      <div>
+        <dl class="dl" style="margin:0">
+          <div><dt>Pergunta de avaliação</dt><dd>{details.question}</dd></div>
+          <div><dt>Como medimos</dt><dd>{details.method}</dd></div>
+          <div><dt>O que a nota não diz</dt><dd>{details.limitation}</dd></div>
+        </dl>
+        <div style="display:grid;gap:12px;margin-top:28px">
+          <a class="btn btn--ink" href={`${base}explorador/?track=${id}`}>Ver os itens <Icon name="arrow-right" weight="regular" size={16} /></a>
+          <a class="btn btn--outline" href={`${base}metodologia/`}>Protocolo completo</a>
+        </div>
+      </div>
+      <div>
+        {
+          charts.length ? (
+            charts.map(({ s, html }) => (
+              <div class="panel" style="margin-bottom:16px">
+                <div class="panel-head" style="margin-bottom:16px">
+                  <div>
+                    <h2 class="h-panel">
+                      {taskNames[s.task] || s.task}
+                      {s.experimental && <span class="badge badge--warn" style="margin-left:8px;vertical-align:3px">experimental</span>}
+                    </h2>
+                    <p>
+                      {chamberNames[s.chamber]} · {modeNames[s.mode]} · {s.minFamilies} {s.minFamilies === 1 ? 'família' : 'famílias'}
+                    </p>
+                  </div>
+                </div>
+                <Fragment set:html={html} />
+              </div>
+            ))
+          ) : (
+            <div class="empty-state">
+              <h2>Sem execuções nesta trilha</h2>
+              <p>Nenhuma execução publicada avaliou esta trilha ainda.</p>
+            </div>
+          )
+        }
+        {
+          examples.length > 0 && (
+            <div style="margin-top:32px">
+              <div class="block-head"><h2 class="h-block">Exemplos de itens</h2></div>
+              {examples.map((e) => (
+                <a class="list-row" href={`${base}explorador/?item=${e.id}`}>
+                  <div>
+                    <h3 style="font-size:18px">{e.prompt}</h3>
+                    <p>{taskNames[e.task] || e.task} · {chamberNames[e.chamber]} · {modeNames[e.mode]}</p>
+                  </div>
+                  <span class="go"><Icon name="arrow-right" weight="regular" size={18} /></span>
+                </a>
+              ))}
+            </div>
+          )
+        }
+      </div>
+    </div>
+  </section>
+
+  <nav class="shell" aria-label="Outras trilhas" style="padding-bottom:96px">
+    <div class="cards">
+      {prev ? (
+        <a class="card-link" href={`${base}trilhas/${prev[0].toLowerCase()}/`}>
+          <span class="fine">Trilha anterior</span>
+          <h3>{prev[0]} · {prev[1]}</h3>
+        </a>
+      ) : <a class="card-link" href={`${base}trilhas/`}><span class="fine">Índice</span><h3>Todas as trilhas</h3></a>}
+      {next ? (
+        <a class="card-link" href={`${base}trilhas/${next[0].toLowerCase()}/`} style="text-align:right">
+          <span class="fine">Próxima trilha</span>
+          <h3>{next[0]} · {next[1]}</h3>
+        </a>
+      ) : <a class="card-link" href={`${base}trilhas/`} style="text-align:right"><span class="fine">Índice</span><h3>Todas as trilhas</h3></a>}
+    </div>
+  </nav>
 </Layout>

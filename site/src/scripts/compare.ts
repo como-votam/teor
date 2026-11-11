@@ -1,0 +1,132 @@
+import { $, h, readJSON, pct, pp } from './ui/core';
+import { createSelect } from './ui/select';
+import { mountSeen } from './ui/controls';
+import { forestHTML, tipData } from '../lib/charts';
+import type { ClientPayload } from '../data/derived';
+
+const root = $('[data-compare]');
+if (root) {
+  const p = readJSON<ClientPayload>('payload');
+  const COLORS = { a: 'var(--series-1)', b: 'var(--series-2)' };
+  const params = new URLSearchParams(location.search);
+  const byId = (id: string | null) => p.runs.find((r) => r.id === id);
+
+  // Padrão: o primeiro modelo contra a referência mais forte.
+  const strongest = p.strongest || undefined;
+  let a = byId(params.get('a'))?.id || p.runs.find((r) => r.kind === 'model')?.id || p.runs[0].id;
+  let b = byId(params.get('b'))?.id || (strongest !== a ? strongest : undefined) || p.runs.find((r) => r.id !== a)!.id;
+  if (a === b) b = p.runs.find((r) => r.id !== a)!.id;
+  let chamber = '';
+  let sort = 'track';
+
+  const options = p.runs.map((r) => ({
+    value: r.id,
+    label: r.label,
+    hint: r.kind === 'baseline' ? 'Referência determinística' : `${r.org} · ${r.provider}`,
+    group: r.kind === 'baseline' ? 'Referências' : 'Modelos',
+  }));
+  const pickA = createSelect({ label: 'Execução A', options, value: a, searchable: true, stacked: true, onChange: (v) => set(v, b) });
+  const pickB = createSelect({ label: 'Execução B', options, value: b, searchable: true, stacked: true, onChange: (v) => set(a, v) });
+  $('[data-pick="a"]', root)!.replaceChildren(pickA.el);
+  $('[data-pick="b"]', root)!.replaceChildren(pickB.el);
+
+  function set(nextA: string, nextB: string) {
+    if (nextA === nextB) [nextA, nextB] = [nextB === a ? b : a, nextB];
+    if (nextA === nextB) nextB = p.runs.find((r) => r.id !== nextA)!.id;
+    a = nextA;
+    b = nextB;
+    pickA.set(a);
+    pickB.set(b);
+    const url = new URL(location.href);
+    url.searchParams.set('a', a);
+    url.searchParams.set('b', b);
+    history.replaceState(null, '', url);
+    render();
+  }
+  $('[data-swap]', root)!.addEventListener('click', () => set(b, a));
+  $('[data-cmp-chamber]', root)!.addEventListener('seg', (e) => {
+    chamber = (e as CustomEvent).detail.value;
+    render();
+  });
+  $('[data-cmp-sort]', root)!.addEventListener('seg', (e) => {
+    sort = (e as CustomEvent).detail.value;
+    render();
+  });
+
+  const fact = (label: string, value: string) => h('span', null, `${label} `, h('strong', { style: 'color:var(--color-ink);font-weight:600' }, value));
+  function facts(id: string) {
+    const r = byId(id)!;
+    return [
+      h('span', { style: 'display:inline-flex;align-items:center;gap:6px' }, h('span', { class: 'swatch', style: `--c:${id === a ? COLORS.a : COLORS.b}` }), id === a ? 'A' : 'B'),
+      fact('cobertura', pct(r.coverage)),
+      fact('custo', r.cost === null ? '—' : `US$ ${r.cost.toLocaleString('pt-BR', { maximumFractionDigits: 4 })}`),
+      fact('latência', r.latency === null ? '—' : `${r.latency.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} s`),
+      h('a', { class: 'link', href: `${base()}modelos/${r.slug}/` }, 'perfil'),
+    ];
+  }
+  const base = () => (document.querySelector('[data-logo]') as HTMLAnchorElement).getAttribute('href') || '/';
+
+  function render() {
+    const ra = byId(a)!;
+    const rb = byId(b)!;
+    $('[data-facts="a"]', root)!.replaceChildren(...facts(a));
+    $('[data-facts="b"]', root)!.replaceChildren(...facts(b));
+    $('[data-cmp-legend]', root)!.replaceChildren(
+      h('span', null, h('span', { class: 'swatch', style: `--c:${COLORS.a}` }), ra.label),
+      h('span', null, h('span', { class: 'swatch', style: `--c:${COLORS.b}` }), rb.label),
+      h('span', null, h('span', { class: 'ci' }), 'IC 95%'),
+    );
+    const shared = p.slices.filter((s) => !s.experimental && s.cells[a] && s.cells[b] && (!chamber || s.chamber === chamber));
+    let aWins = 0;
+    let bWins = 0;
+    const rows = shared.map((s) => {
+      const ca = s.cells[a];
+      const cb = s.cells[b];
+      const diff = ca.mean - cb.mean;
+      const sep = ca.low > cb.high || cb.low > ca.high;
+      if (sep && diff > 0) aWins++;
+      if (sep && diff < 0) bWins++;
+      const track = p.tracks.find((t) => t[0] === s.track)!;
+      return {
+        diff,
+        row: {
+          group: sort === 'track' ? `${track[0]} · ${track[1]}` : undefined,
+          label: p.taskNames[s.task] || s.task,
+          sub: `${p.chamberNames[s.chamber]} · ${p.modeNames[s.mode]}`,
+          strong: sep,
+          value: pp(diff),
+          points: [
+            { mean: cb.mean, low: cb.low, high: cb.high, color: COLORS.b, name: rb.label },
+            { mean: ca.mean, low: ca.low, high: ca.high, color: COLORS.a, name: ra.label },
+          ],
+          tip: tipData(`${p.taskNames[s.task] || s.task} · ${p.chamberNames[s.chamber]}`, pp(diff), [
+            [ra.label, `${pct(ca.mean)} (${pct(ca.low, 0)}–${pct(ca.high, 0)})`, COLORS.a],
+            [rb.label, `${pct(cb.mean)} (${pct(cb.low, 0)}–${pct(cb.high, 0)})`, COLORS.b],
+          ], sep ? 'Intervalos separados.' : 'Intervalos se sobrepõem: sem diferença demonstrada.'),
+        },
+      };
+    });
+    if (sort === 'diff') rows.sort((x, y) => y.diff - x.diff);
+    const chart = $('[data-cmp-chart]', root)!;
+    if (!rows.length) {
+      chart.replaceChildren(h('div', { class: 'empty-state' }, h('h3', null, 'Nenhuma fatia em comum'), h('p', null, 'As duas execuções não têm tarefas avaliadas nesta casa.')));
+    } else {
+      chart.innerHTML = forestHTML(rows.map((r) => r.row), { labelWidth: '36%' });
+      mountSeen(chart);
+    }
+    const overlap = rows.length - aWins - bWins;
+    const cell = (n: number, text: string, color?: string) =>
+      h(
+        'div',
+        null,
+        h('div', { class: 'kpi-value', style: 'display:flex;align-items:center;gap:10px' }, color ? h('span', { class: 'swatch', style: `--c:${color}` }) : null, String(n)),
+        h('div', { class: 'kpi-label' }, text),
+      );
+    $('[data-verdicts]', root)!.replaceChildren(
+      cell(aWins, `fatias em que ${ra.label} fica acima, com intervalos separados`, COLORS.a),
+      cell(overlap, 'fatias em que os intervalos se sobrepõem'),
+      cell(bWins, `fatias em que ${rb.label} fica acima, com intervalos separados`, COLORS.b),
+    );
+  }
+  render();
+}

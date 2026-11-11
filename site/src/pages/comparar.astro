@@ -1,0 +1,88 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Breadcrumbs from '../components/seo/Breadcrumbs.astro';
+import Icon from '../components/Icon.astro';
+import { clientPayload, runs } from '../data/derived';
+import { serializeJson } from '../lib/seo/config';
+---
+
+<Layout title="Comparar execuções">
+  <Breadcrumbs />
+  <section class="shell page-hero">
+    <p class="eyebrow">Comparar</p>
+    <h1 class="h-page">Duas execuções, fatia por fatia</h1>
+    <p class="sub">
+      A diferença só vale quando os intervalos se separam. Onde eles se sobrepõem, o benchmark não
+      sabe dizer qual é melhor.
+    </p>
+  </section>
+
+  {
+    runs.length < 2 ? (
+      <section class="shell" style="padding-bottom:96px">
+        <div class="empty-state">
+          <Icon name="scales" size={32} />
+          <h2>É preciso ter duas execuções</h2>
+          <p>Esta publicação tem {runs.length} execução. A comparação abre quando houver outra no mesmo protocolo.</p>
+        </div>
+      </section>
+    ) : (
+      <section class="shell" style="padding-bottom:96px" data-compare>
+        <div class="vs">
+          <div class="vs-card" data-side="a">
+            <div data-pick="a" />
+            <div class="facts" data-facts="a" />
+          </div>
+          <div class="vs-swap">
+            <button class="icon-btn" type="button" data-swap aria-label="Trocar as execuções de lado">
+              <Icon name="arrows-left-right" weight="regular" size={18} />
+            </button>
+          </div>
+          <div class="vs-card" data-side="b">
+            <div data-pick="b" />
+            <div class="facts" data-facts="b" />
+          </div>
+        </div>
+
+        <div class="verdicts" data-verdicts aria-live="polite" />
+
+        <div class="panel" style="margin-top:24px">
+          <div class="toolbar">
+            <div class="group">
+              <div class="seg" role="radiogroup" aria-label="Casa legislativa" data-seg data-cmp-chamber>
+                <button type="button" role="radio" aria-checked="true" data-value="">
+                  <span data-text="Ambas">Ambas</span>
+                </button>
+                <button type="button" role="radio" aria-checked="false" data-value="camara">
+                  <span data-text="Câmara">Câmara</span>
+                </button>
+                <button type="button" role="radio" aria-checked="false" data-value="senado">
+                  <span data-text="Senado">Senado</span>
+                </button>
+              </div>
+              <div class="seg" role="radiogroup" aria-label="Ordenação" data-seg data-cmp-sort>
+                <button type="button" role="radio" aria-checked="true" data-value="track">
+                  <span data-text="Por trilha">Por trilha</span>
+                </button>
+                <button type="button" role="radio" aria-checked="false" data-value="diff">
+                  <span data-text="Pela diferença">Pela diferença</span>
+                </button>
+              </div>
+            </div>
+            <div class="legend" data-cmp-legend />
+          </div>
+          <div data-cmp-chart />
+          <p class="note">
+            Coluna da direita: diferença A − B em pontos percentuais. Linhas em negrito têm intervalos
+            de confiança que não se sobrepõem. A comparação usa só fatias presentes nas duas execuções.
+          </p>
+        </div>
+        <script type="application/json" id="payload" set:html={serializeJson(clientPayload)} />
+      </section>
+    )
+  }
+</Layout>
+
+<script>
+  import '../scripts/compare.ts';
+</script>

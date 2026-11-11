@@ -7,52 +7,45 @@ import { urls, REPOSITORY, SOURCES } from '../lib/seo/config';
 
 <Layout title="Sobre o Teor">
   <Breadcrumbs />
-  <article class="prose">
-    <p class="eyebrow">Projeto e manutenção</p>
-    <h1>
-      Um benchmark aberto.
-      <br />
-      Uma resposta verificável.
-    </h1>
-    <p>
-      O Teor é um benchmark do Como Votam para avaliar modelos de linguagem sobre o processo
-      legislativo brasileiro. Câmara e Senado fornecem os registros; o protocolo define o
-      experimento.
-    </p>
-    <h2>Quem mantém o projeto</h2>
-    <p>
-      O Como Votam mantém o Teor. Adriano Coelho é o mantenedor identificado no{' '}
-      <a href={`${REPOSITORY}/blob/main/README.md`}>README público</a>. O projeto não presume
-      validação institucional, parceria acadêmica ou revisão por especialistas ainda não realizada.
-    </p>
-    <h2>Como os resultados são publicados</h2>
-    <p>
-      Cada execução registra modelo, conjunto, protocolo, parâmetros, métricas e consumo. Submissões
-      externas são autodeclaradas até que a reprodução ou a execução supervisionada sustente a
-      verificação.
-    </p>
-    <p>
-      O Como Votam utiliza LLMs no produto. Isso não altera as regras do benchmark. O Teor não
-      utiliza prompts nem dados privados desse produto.
-    </p>
-    <h2>Fontes e reuso</h2>
-    <ul>
-      {SOURCES.map((s) => (
-        <li>
-          <a href={s.url}>{s.name}</a>
-        </li>
-      ))}
-    </ul>
-    <p>
-      O código é Apache 2.0. Os termos de documentos, itens derivados e marca são separados; a
-      proposta de licença dos dados continua condicionada à confirmação das fontes.
-    </p>
-    <p>
-      <a href={REPOSITORY}>Abrir o código</a> ·{' '}
-      <a href={urls.path('metodologia/')}>Ler o protocolo</a> ·{' '}
-      <a href={urls.path('erratas/')}>Consultar erratas</a> ·{' '}
-      <a href={urls.path('como-citar/')}>Citar o projeto</a>
-    </p>
+  <div class="shell shell--narrow" style="padding-block:32px 96px">
+    <article class="prose">
+      <p class="eyebrow">Sobre</p>
+      <h1>Um benchmark aberto, mantido por quem publica dados legislativos</h1>
+      <p>
+        O Teor avalia modelos de linguagem sobre o processo legislativo brasileiro. A Câmara dos
+        Deputados e o Senado Federal fornecem os registros; o protocolo define o experimento; o
+        código fica público para que qualquer pessoa refaça a conta.
+      </p>
+      <h2>Quem mantém</h2>
+      <p>
+        O Como Votam mantém o projeto, e Adriano Coelho é o mantenedor identificado no{' '}
+        <a href={`${REPOSITORY}/blob/main/README.md`}>README público</a>. Não há validação
+        institucional, parceria acadêmica ou revisão por especialistas ainda não realizada.
+      </p>
+      <h2>Como os resultados entram</h2>
+      <p>
+        Cada execução registra modelo, conjunto, protocolo, parâmetros, métricas e consumo.
+        Submissões externas ficam como autodeclaradas até que a reprodução ou a execução
+        supervisionada sustente a verificação.
+      </p>
+      <h2>Conflito de interesse</h2>
+      <p>
+        O Como Votam usa LLMs no próprio produto. Isso não muda as regras do benchmark: o Teor não
+        usa prompts nem dados privados do produto e não ajusta tarefas para favorecer um modelo.
+      </p>
+      <h2>Fontes e reuso</h2>
+      <ul>
+        {SOURCES.map((s) => (<li><a href={s.url}>{s.name}</a></li>))}
+      </ul>
+      <p>
+        Código sob Apache 2.0. Itens derivados e marca têm termos separados, e a licença proposta para
+        os dados depende de confirmação das fontes.
+      </p>
+      <p>
+        <a href={REPOSITORY}>Código</a> · <a href={urls.path('metodologia/')}>Protocolo</a> ·{' '}
+        <a href={urls.path('erratas/')}>Erratas</a> · <a href={urls.path('como-citar/')}>Como citar</a>
+      </p>
+    </article>
     <CitableFacts />
-  </article>
+  </div>
 </Layout>

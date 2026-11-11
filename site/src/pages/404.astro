@@ -1,21 +1,20 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import Icon from '../components/Icon.astro';
+const base = import.meta.env.BASE_URL;
 ---
 
 <Layout title="Página não encontrada">
-  <div class="page-intro">
-    <p class="eyebrow">404 / Página não encontrada</p>
-    <h1>
-      Esse caminho
-      <br />
-      não tem resultado.
-    </h1>
-    <p class="lead">
-      O endereço pode ter mudado. Volte à comparação ou abra o explorador de itens.
+  <section class="shell notfound">
+    <p class="big">HTTP 404 · recurso inexistente</p>
+    <h1 class="h-page" style="margin-top:18px;max-width:16ch">Este endereço não tem registro.</h1>
+    <p class="lead" style="margin-top:20px">
+      O link pode ter mudado. Busque com <kbd>/</kbd> ou volte por um destes caminhos.
     </p>
-    <a class="button" href={import.meta.env.BASE_URL}>
-      Voltar aos resultados <Icon name="arrow" />
-    </a>
-  </div>
+    <div class="hero-actions">
+      <a class="btn" href={base}>Página inicial <Icon name="arrow-right" weight="regular" size={16} /></a>
+      <a class="btn btn--outline" href={`${base}explorador/`}>Itens</a>
+      <a class="btn btn--ghost" href={`${base}modelos/`}>Resultados</a>
+    </div>
+  </section>
 </Layout>

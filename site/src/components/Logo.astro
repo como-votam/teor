@@ -1,0 +1,57 @@
+---
+// Marca do Como Votam (impressão digital sobre o Congresso), redesenhada traço a traço no hover,
+// como no site principal. Em repouso é só o preenchimento; sem JS continua estática.
+import fs from 'node:fs';
+interface Props {
+  inverted?: boolean;
+  href?: string;
+}
+const { inverted = false, href = import.meta.env.BASE_URL } = Astro.props;
+const svg = fs.readFileSync('public/brand.svg', 'utf8');
+const paths = [...svg.matchAll(/ d="([^"]+)"/g)].map((m) => m[1]);
+// Duração proporcional ao tamanho do traço; cada anel começa antes do anterior terminar.
+const weights = paths.map((d) => Math.max(40, d.length / 18));
+const total = 1100;
+const overlap = 0.62;
+const starts: number[] = [];
+weights.forEach((w, i) => starts.push(i === 0 ? 0 : starts[i - 1] + weights[i - 1] * overlap));
+const raw = starts[starts.length - 1] + weights[weights.length - 1];
+const scale = total / raw;
+const timing = weights.map((w, i) => ({ w: Math.round(starts[i] * scale), d: Math.round(w * scale) }));
+const title = 'Teor';
+const sub = 'Benchmark do Como Votam';
+---
+
+<a
+  class:list={['logo', { 'logo--inverted': inverted }]}
+  href={href}
+  aria-label="Teor, página inicial"
+  data-logo
+>
+  <svg class="logo-mark" viewBox="0 0 101 112" aria-hidden="true">
+    {
+      paths.map((d, i) => (
+        <path
+          class="stroke"
+          d={d}
+          pathLength="1"
+          style={`--w:${timing[i].w}ms;--d:${timing[i].d}ms`}
+        />
+      ))
+    }
+    {
+      paths.map((d, i) => (
+        <path
+          class="fill"
+          d={d}
+          fill="currentColor"
+          style={`--w:${timing[i].w}ms;--d:${timing[i].d}ms`}
+        />
+      ))
+    }
+  </svg>
+  <span class="logo-text">
+    <span class="logo-title"><span>{title}</span></span>
+    <span class="logo-sub"><span>{sub}</span></span>
+  </span>
+</a>

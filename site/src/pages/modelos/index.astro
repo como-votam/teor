@@ -1,41 +1,191 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Breadcrumbs from '../../components/seo/Breadcrumbs.astro';
-import { modelPages } from '../../lib/seo/registry';
-import { data, modelName } from '../../data';
-import { urls } from '../../lib/seo/config';
-const executionCount = (model: string) => data.results.filter((r) => r.model === model).length;
+import Icon from '../../components/Icon.astro';
+import { runs, models, liftSummary, principalSlices } from '../../data/derived';
+import { pct, usd, secs, date, compact, int } from '../../lib/format';
+import { seriesColor } from '../../lib/charts';
+const base = import.meta.env.BASE_URL;
+const rows = runs.map((r) => {
+  const slices = principalSlices.filter((s) => s.cells[r.id]);
+  return { r, lift: r.kind === 'model' ? liftSummary(r.id) : null, slices: slices.length };
+});
+const sameCohort = new Set(runs.map((r) => `${r.datasetHash}:${r.protocolHash}`)).size === 1;
 ---
 
 <Layout title="Referências e modelos">
   <Breadcrumbs />
-  <p class="eyebrow">Execuções publicadas</p>
-  <h1>
-    Abra o resultado.
-    <br />
-    Confira as condições.
-  </h1>
-  <p>
-    Os perfis reúnem métricas por execução. Baselines são referências determinísticas; notas de
-    tarefas diferentes não formam um ranking global.
-  </p>
-  <div class="article-list">
-    {modelPages.map((p) => (
-      <a href={urls.path(p.path)}>
-        {modelName(p.model!)}
-        <span>
-          {p.model!.startsWith('baseline/') ? 'Baseline determinístico' : 'Modelo de linguagem'} ·{' '}
-          {executionCount(p.model!)}{' '}
-          {executionCount(p.model!) === 1 ? 'execução publicada' : 'execuções publicadas'}
-        </span>
+  <section class="shell page-hero">
+    <p class="eyebrow">Resultados</p>
+    <h1 class="h-page">Execuções publicadas</h1>
+    <p class="sub">
+      Cada linha é uma execução completa do protocolo, com custo, latência e o que ficou acima das
+      referências.
+    </p>
+  </section>
+
+  <section class="shell" style="padding-bottom:40px">
+    {
+      sameCohort && runs.length > 0 && (
+        <div class="callout" style="margin-bottom:20px">
+          <Icon name="seal-check" size={18} />
+          <span>
+            Todas as execuções usam o mesmo conjunto (<code class="mono">{runs[0].datasetHash.slice(0, 8)}</code>) e o mesmo
+            protocolo (<code class="mono">{runs[0].protocolHash.slice(0, 8)}</code>), então as fatias são comparáveis entre
+            linhas.
+          </span>
+        </div>
+      )
+    }
+    {
+      runs.length ? (
+        <div class="table-wrap" data-sortable>
+          <table class="table">
+            <caption class="sr-only">Execuções publicadas no Teor. Os cabeçalhos com seta ordenam a tabela.</caption>
+            <thead>
+              <tr>
+                <th scope="col">Execução</th>
+                <th scope="col">
+                  <button class="sort" type="button" data-key="above">
+                    Acima da referência <Icon name="caret-down" weight="bold" size={12} />
+                  </button>
+                </th>
+                <th scope="col" class="num">
+                  <button class="sort" type="button" data-key="coverage">
+                    Cobertura <Icon name="caret-down" weight="bold" size={12} />
+                  </button>
+                </th>
+                <th scope="col" class="num">
+                  <button class="sort" type="button" data-key="cost">
+                    Custo <Icon name="caret-down" weight="bold" size={12} />
+                  </button>
+                </th>
+                <th scope="col" class="num">
+                  <button class="sort" type="button" data-key="latency">
+                    Latência média <Icon name="caret-down" weight="bold" size={12} />
+                  </button>
+                </th>
+                <th scope="col" class="num">Tokens</th>
+                <th scope="col">
+                  <button class="sort" type="button" data-key="date">
+                    Data <Icon name="caret-down" weight="bold" size={12} />
+                  </button>
+                </th>
+                <th scope="col">Verificação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(({ r, lift, slices }) => (
+                <tr
+                  data-row
+                  data-above={lift ? lift.above / Math.max(1, lift.total) : -1}
+                  data-coverage={r.coverage}
+                  data-cost={r.cost ?? -1}
+                  data-latency={r.latency ?? -1}
+                  data-date={r.date}
+                >
+                  <th scope="row">
+                    <a class="run-name" href={`${base}modelos/${r.slug}/`}>
+                      <span class={r.kind === 'baseline' ? 'swatch swatch--ref' : 'swatch'} style={`--c:${seriesColor(r.color)}`} />
+                      <span>
+                        <span class="t">{r.label}</span>
+                        <small>
+                          {r.kind === 'baseline' ? 'Referência determinística' : `${r.org} · ${r.provider}`}
+                        </small>
+                      </span>
+                    </a>
+                  </th>
+                  <td>
+                    {lift ? (
+                      <span style="display:flex;align-items:center;gap:12px">
+                        <span class="lift-bar" style="width:120px" role="img" aria-label={`${lift.above} acima, ${lift.overlap} indefinidas, ${lift.below} abaixo`}>
+                          <i class="up" style={`flex:${lift.above}`} />
+                          <i class="eq" style={`flex:${lift.overlap}`} />
+                          <i class="dn" style={`flex:${lift.below}`} />
+                        </span>
+                        <span class="tnum" style="font-size:13.5px">
+                          {lift.above}/{lift.total}
+                        </span>
+                      </span>
+                    ) : (
+                      <span class="fine">é o piso ({slices} fatias)</span>
+                    )}
+                  </td>
+                  <td class="num">{pct(r.coverage)}</td>
+                  <td class="num">{usd(r.cost)}</td>
+                  <td class="num">{secs(r.latency)}</td>
+                  <td class="num">
+                    {r.tokensIn ? `${compact(r.tokensIn)} → ${compact(r.tokensOut)}` : '—'}
+                  </td>
+                  <td class="nowrap">{date(r.date)}</td>
+                  <td>
+                    <span class="badge badge--muted">{r.verification}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div class="empty-state">
+          <Icon name="chart-scatter" size={32} />
+          <h2>Nenhum resultado publicado</h2>
+          <p>As avaliações entram aqui depois de uma execução documentada e validada.</p>
+          <a class="btn" href={`${base}contribuir/`}>Como submeter uma avaliação</a>
+        </div>
+      )
+    }
+    <p class="note">
+      “Acima da referência” conta as fatias em que o intervalo de confiança inteiro do modelo fica
+      acima da melhor referência determinística da mesma fatia. Intervalos que tocam o piso contam
+      como indefinidos, não como empate.
+    </p>
+  </section>
+
+  <section class="shell section--tight" style="padding-bottom:96px">
+    <div class="cards cards--3">
+      <a class="card-link" href={`${base}comparar/`}>
+        <Icon name="scales" size={28} />
+        <h3>Comparar duas execuções</h3>
+        <p>Diferença fatia por fatia, com a sobreposição dos intervalos à vista.</p>
+        <span class="go">Abrir comparação <Icon name="arrow-right" weight="regular" size={16} /></span>
       </a>
-    ))}
-  </div>
-  {!modelPages.length && (
-    <div class="empty">
-      <h2>Nenhum resultado publicado</h2>
-      <p>As avaliações entram aqui após uma execução documentada.</p>
-      <a href={urls.path('contribuir/')}>Como submeter uma avaliação →</a>
+      <a class="card-link" href={`${base}resultados/index.json`}>
+        <Icon name="brackets-curly" size={28} />
+        <h3>Catálogo em JSON</h3>
+        <p>Métricas públicas de todas as execuções, para análise própria ou reprodução.</p>
+        <span class="go">resultados/index.json <Icon name="arrow-right" weight="regular" size={16} /></span>
+      </a>
+      <a class="card-link" href={`${base}contribuir/`}>
+        <Icon name="flask" size={28} />
+        <h3>Submeter uma execução</h3>
+        <p>Rode o protocolo no seu modelo e abra um pull request com o JSON de métricas.</p>
+        <span class="go">Avaliar um modelo <Icon name="arrow-right" weight="regular" size={16} /></span>
+      </a>
     </div>
-  )}
+  </section>
 </Layout>
+
+<script>
+  // Ordenação dos cabeçalhos: mantém a linha inteira, alterna asc/desc, anuncia o estado.
+  import { $$ } from '../../scripts/ui/core';
+  for (const wrap of $$('[data-sortable]')) {
+    const tbody = wrap.querySelector('tbody')!;
+    const buttons = $$<HTMLButtonElement>('.sort', wrap);
+    buttons.forEach((btn) =>
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.key!;
+        const dir = btn.dataset.dir === 'desc' ? 'asc' : 'desc';
+        buttons.forEach((b) => {
+          delete b.dataset.dir;
+          b.closest('th')!.removeAttribute('aria-sort');
+        });
+        btn.dataset.dir = dir;
+        btn.closest('th')!.setAttribute('aria-sort', dir === 'asc' ? 'ascending' : 'descending');
+        const rows = $$<HTMLTableRowElement>('tr', tbody);
+        const val = (r: HTMLTableRowElement) => (key === 'date' ? Date.parse(r.dataset.date!) : Number(r.dataset[key]));
+        rows.sort((a, b) => (dir === 'asc' ? 1 : -1) * (val(a) - val(b))).forEach((r) => tbody.append(r));
+      }),
+    );
+  }
+</script>

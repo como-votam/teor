@@ -71,7 +71,12 @@ export function pageBody(p: Page): string {
     case 'analises/':
       return `# Análises do Teor\n\n${p.description}\n\n- ${link('Como interpretar uma nota', 'analises/interpretacao/')}\n- [Notebooks reprodutíveis](${REPOSITORY}/tree/main/analyses)`;
     case 'explorador/':
-      return `# Explorar itens do Teor\n\n${p.description}\n\nItens na exportação pública: ${data.count}. Partições publicadas: ${data.partitions.length}.\n\nO explorador consulta Parquet no navegador. A busca considera apenas partições carregadas. As perguntas trazem contexto, gabarito e evidência.\n\n${data.partitions.map((partition, i) => `- ${link(`Partição ${i + 1}: ${partition.count} itens`, partition.url.replace(/^\//, ''))}`).join('\n') || 'Nenhuma partição pública foi exportada nesta publicação.'}\n\n${link('Política de dados e fontes', 'dados/')}`;
+      return `# Explorar itens do Teor\n\n${p.description}\n\nItens na exportação pública: ${data.count}. Partições publicadas: ${data.partitions.length}.\n\nO explorador lê um índice estático dos itens e abre cada item sob demanda, com contexto, gabarito, as três variantes do prompt e a evidência oficial. Um console SQL (DuckDB no navegador) consulta as partições Parquet abaixo.\n\n${data.partitions.map((partition, i) => `- ${link(`Partição ${i + 1}: ${partition.count} itens`, partition.url.replace(/^\//, ''))}`).join('\n') || 'Nenhuma partição pública foi exportada nesta publicação.'}\n\n${link('Política de dados e fontes', 'dados/')}`;
+    case 'comparar/':
+      return `# Comparar execuções no Teor\n\n${p.description}\n\nA comparação só vale entre execuções com o mesmo hash de conjunto e de protocolo. Para cada tarefa, casa e modo, a página mostra a média e o intervalo de confiança de 95% das duas execuções, e indica quando os intervalos não se sobrepõem. Isso não produz uma nota geral.\n\n${pages
+        .filter((p) => p.model)
+        .map((p) => `- ${link(modelName(p.model!), p.path)}`)
+        .join('\n')}`;
     case 'quiz/':
       return `# Teste suas respostas no quiz do Teor\n\n${p.description}\n\nPerguntas nesta exportação: ${data.quiz.length}.\n\n${data.quiz.length ? 'Responda com o contexto fornecido. O gabarito e a fonte aparecem depois de conferir a resposta.' : 'O quiz aguarda um conjunto público exportado.'}\n\nO quiz não guarda respostas no armazenamento do navegador. Comparações com modelos exigem os mesmos itens e a mesma execução. O resultado pessoal não é uma classificação geral de modelos.\n\n${link('Abrir o quiz', 'quiz/')}`;
     case 'rodadas/':
