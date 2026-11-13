@@ -20,7 +20,7 @@
     "@fontsource/public-sans": "^5.2.0",
     "@fontsource/space-mono": "^5.2.0",
     "@phosphor-icons/core": "^2.1.1",
-    "astro": "^7.3.8",
+    "astro": "^7.4.7",
     "hyparquet": "^1.33.0",
     "hyparquet-compressors": "^1.1.3"
   },
