@@ -1,5 +1,21 @@
 name: Site público
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      # Conteúdo e dados consumidos pelo build do site.
+      - 'docs/*.md'
+      - 'published/items.jsonl'
+      - 'results/*.json'
+      - 'CITATION.cff'
+      # Código e dependências da exportação dos dados públicos.
+      - 'teor/**'
+      - 'config/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/pages.yml'
+      - '!**/.DS_Store'
   workflow_dispatch:
 permissions:
   contents: read
