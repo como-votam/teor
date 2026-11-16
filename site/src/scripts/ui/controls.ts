@@ -1,3 +1,4 @@
+import { track } from '../../lib/analytics/events';
 import { h, icon, announce, reducedMotion } from './core';
 
 // ── Segmented (radiogroup com polegar deslizante) ────────────────────────────
@@ -136,6 +137,7 @@ export const tipJSON = (data: TipData) => JSON.stringify(data);
 
 // ── Sheet lateral ────────────────────────────────────────────────────────────
 export function openSheet(opts: { title: string; body: Node; wide?: boolean; onClose?: () => void }) {
+  track('sheet_opened');
   const returnTo = document.activeElement as HTMLElement | null;
   const titleId = `sheet-${Date.now()}`;
   const closeBtn = h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Fechar' }, icon('x', 18));
@@ -173,6 +175,7 @@ export function openSheet(opts: { title: string; body: Node; wide?: boolean; onC
   function close() {
     if (closed) return;
     closed = true;
+    track('sheet_closed');
     document.removeEventListener('keydown', onKey);
     sheet.setAttribute('data-closing', '');
     scrim.setAttribute('data-closing', '');
@@ -201,10 +204,12 @@ export function mountCopy(root: ParentNode = document) {
       const text = target ? (target.textContent || '').trim() : btn.dataset.copy || '';
       try {
         await navigator.clipboard.writeText(text);
+        track('copy_succeeded');
         btn.setAttribute('data-copied', '');
         announce('Copiado para a área de transferência.');
         setTimeout(() => btn.removeAttribute('data-copied'), 1600);
       } catch {
+        track('copy_failed');
         announce('Não foi possível copiar. Selecione o texto manualmente.');
       }
     });

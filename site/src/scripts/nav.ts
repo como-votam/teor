@@ -1,3 +1,4 @@
+import { track } from '../lib/analytics/events';
 // Navegação do desktop, no padrão do Como Votam: uma lente que repousa na seção atual e desliza
 // até o gatilho sob o ponteiro, e um único painel que acompanha o gatilho aberto, mudando de
 // tamanho e trazendo o conteúdo novo pela direção do movimento.
@@ -58,6 +59,7 @@ if (nav && lens && viewport) {
   function show(key: string) {
     clearTimeout(closeTimer);
     if (key === open) return;
+    track('navigation_menu_opened');
     const prev = open;
     const from = triggers.findIndex((t) => t.dataset.navTrigger === prev);
     const to = triggers.findIndex((t) => t.dataset.navTrigger === key);
@@ -81,6 +83,7 @@ if (nav && lens && viewport) {
   function hide() {
     clearTimeout(openTimer);
     if (!open) return;
+    track('navigation_menu_closed');
     open = '';
     triggers.forEach((t) => t.setAttribute('aria-expanded', 'false'));
     viewport!.hidden = true;

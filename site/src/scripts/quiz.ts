@@ -1,3 +1,5 @@
+import './analytics';
+import { track } from '../lib/analytics/events';
 import { $, $$, h, icon, readJSON, swap, announce, pct, focusQuietly } from './ui/core';
 import { normalize, quizScore } from '../lib/quiz';
 
@@ -22,6 +24,10 @@ if (container) {
   const scoreEl = $('[data-q-score]', root)!;
   const results: number[] = [];
   let index = 0;
+  let started = false;
+  let completed = false;
+  root.setAttribute('data-clarity-mask', 'true');
+  window.addEventListener('pagehide', () => { if (started && !completed) track('quiz_exited'); });
 
   const tone = (s: number) => (s === 1 ? 'ok' : s > 0 ? 'part' : 'bad');
   const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
@@ -55,7 +61,7 @@ if (container) {
       const draw = () => {
         box.replaceChildren(
           ...tags.map((t, i) =>
-            h('span', { class: 'tag' }, t, h('button', { type: 'button', 'aria-label': `Remover ${t}`, onclick: () => (tags.splice(i, 1), draw(), field.focus()) }, icon('x', 12))),
+            h('span', { class: 'tag' }, t, h('button', { type: 'button', 'aria-label': 'Remover item', onclick: () => (tags.splice(i, 1), draw(), field.focus()) }, icon('x', 12))),
           ),
           field,
         );
@@ -130,6 +136,7 @@ if (container) {
   }
 
   function show(first = false) {
+    track('quiz_question_viewed');
     const q = items[index];
     steps.forEach((s, i) => s.setAttribute('data-s', i < index ? tone(results[i]) : i === index ? 'now' : ''));
     $('[data-q-count]', root)!.textContent = `${index + 1} de ${items.length}`;
@@ -152,6 +159,7 @@ if (container) {
       if (done) return;
       const value = field.value();
       if (!value && !skipped) {
+        track('quiz_validation_failed');
         field.invalid(true);
         check.classList.add('is-refused');
         setTimeout(() => check.classList.remove('is-refused'), 300);
@@ -159,6 +167,8 @@ if (container) {
         return;
       }
       done = true;
+      if (!started) { started = true; track('quiz_started'); }
+      track(skipped ? 'quiz_skipped' : 'quiz_answered');
       field.invalid(false);
       field.lock();
       const score = skipped ? 0 : quizScore(q.answer.type, q.answer.value, value);
@@ -169,6 +179,7 @@ if (container) {
       const last = index === items.length - 1;
       const next = h('button', { type: 'button', class: 'btn' }, last ? 'Ver resultado' : 'Próxima', icon('arrowRight', 16));
       next.addEventListener('click', () => {
+        track('quiz_next');
         index++;
         if (index < items.length) show();
         else finish();
@@ -221,12 +232,17 @@ if (container) {
   }
 
   function finish() {
+    completed = true;
+    track('quiz_completed');
     steps.forEach((s, i) => s.setAttribute('data-s', tone(results[i])));
     const total = results.reduce((a, b) => a + b, 0);
     $('[data-q-count]', root)!.textContent = 'Resultado';
     const share = `Fiz ${fmt(total)} de ${items.length} no desafio do Teor, o benchmark de IA sobre o Congresso.`;
     const again = h('button', { type: 'button', class: 'btn' }, icon('reset', 16), 'Refazer');
     again.addEventListener('click', () => {
+      track('quiz_restarted');
+      started = false;
+      completed = false;
       results.length = 0;
       index = 0;
       setScore();

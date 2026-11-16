@@ -1,4 +1,6 @@
+import { track } from '../lib/analytics/events';
 import { $, $$, h, icon, normalize, readJSON, swap, isTyping, announce, scrollWithin } from './ui/core';
+import { protectAnalyticsUrl } from './analytics';
 import { mountCopy } from './ui/controls';
 import type { ItemSummary } from '../data/derived';
 
@@ -67,9 +69,12 @@ function matches(i: ItemSummary & { _text: string }, skip?: FacetKey) {
 
 function syncURL() {
   const url = new URL(location.href);
-  (['track', 'task', 'chamber', 'mode', 'type', 'difficulty', 'q', 'item'] as const).forEach((k) =>
+  (['track', 'task', 'chamber', 'mode', 'type', 'difficulty', 'item'] as const).forEach((k) =>
     state[k] ? url.searchParams.set(k, state[k]) : url.searchParams.delete(k),
   );
+  // Free text stays in memory; never expose it to recording, referrers or copied links.
+  url.searchParams.delete('q');
+  protectAnalyticsUrl(url);
   history.replaceState(null, '', url);
 }
 
@@ -118,6 +123,7 @@ function renderFacets() {
 }
 
 function setFacet(key: FacetKey, value: string) {
+  track('explorer_filter_changed');
   state[key] = value;
   if (key === 'track' && state.task && !all.some((i) => i.task === state.task && (!value || i.track === value))) state.task = '';
   update();
@@ -189,7 +195,7 @@ function renderRows() {
     rowsEl.append(
       h(
         'button',
-        { type: 'button', class: 'btn btn--ghost btn--sm', style: 'margin:8px auto;display:flex', onclick: () => ((limit += PAGE), renderRows()) },
+        { type: 'button', class: 'btn btn--ghost btn--sm', style: 'margin:8px auto;display:flex', onclick: () => { track('explorer_more_loaded'); limit += PAGE; renderRows(); } },
         `Mostrar mais ${Math.min(PAGE, shown.length - limit)} de ${shown.length - limit}`,
       ),
     );
@@ -214,6 +220,7 @@ function update() {
   syncURL();
 }
 function clearAll() {
+  track('explorer_filters_cleared');
   FACETS.forEach((f) => (state[f.key] = ''));
   state.q = '';
   search.value = '';
@@ -225,6 +232,7 @@ let t: ReturnType<typeof setTimeout>;
 search.addEventListener('input', () => {
   clearTimeout(t);
   t = setTimeout(() => {
+    track('explorer_search_used');
     state.q = search.value.trim();
     update();
   }, 90);
@@ -286,11 +294,13 @@ async function select(id: string) {
       item = await res.json();
       cache.set(id, item);
     } catch {
+      track('explorer_item_failed');
       detailEl.replaceChildren(h('div', { class: 'ex-empty' }, h('div', null, icon('warning', 28), h('h3', null, 'O item não carregou'), h('p', null, 'Verifique a conexão e escolha o item de novo.'))));
       return;
     }
   }
   if (state.item !== id) return;
+  track('explorer_item_viewed');
   renderDetail(item);
 }
 
@@ -361,6 +371,7 @@ function renderHistory(history: { body: string; date: string; description: strin
   if (history.length > LIMIT) {
     const more = h('button', { type: 'button', class: 'btn btn--ghost btn--sm', style: 'margin-top:8px' }, `Mostrar os ${history.length} eventos`);
     more.addEventListener('click', () => {
+      track('explorer_history_expanded');
       draw(history.length);
       more.remove();
     });
@@ -536,6 +547,7 @@ fetch(`${base}itens/index.json`)
     }
   })
   .catch(() => {
+    track('explorer_index_failed');
     countEl.textContent = 'O índice não carregou. Recarregue a página.';
     rowsEl.replaceChildren();
   });
@@ -592,6 +604,7 @@ async function connect() {
 async function run() {
   const sql = input.value.trim();
   if (!sql || runBtn.disabled) return;
+  track('sql_started');
   runBtn.disabled = true;
   status.removeAttribute('data-tone');
   try {
@@ -602,6 +615,7 @@ async function run() {
     const ms = Math.round(performance.now() - t0);
     const cols = table.schema.fields.map((f: { name: string }) => f.name);
     const rows = table.toArray().map((r: any) => cols.map((k: string) => r[k]));
+    track('sql_succeeded');
     lastRows = { cols, rows };
     const shownRows = rows.slice(0, 500);
     const cellText = (v: unknown) => (v === null || v === undefined ? 'NULL' : typeof v === 'bigint' ? v.toString() : typeof v === 'object' ? JSON.stringify(v, (_, x) => (typeof x === 'bigint' ? x.toString() : x)) : String(v));
@@ -613,7 +627,7 @@ async function run() {
           'table',
           { class: 'table' },
           h('thead', null, h('tr', null, ...cols.map((c: string) => h('th', { scope: 'col' }, c)))),
-          h('tbody', null, ...shownRows.map((r: unknown[]) => h('tr', { 'data-row': '' }, ...r.map((v) => h('td', { title: cellText(v).slice(0, 400) }, cellText(v)))))),
+          h('tbody', null, ...shownRows.map((r: unknown[]) => h('tr', { 'data-row': '' }, ...r.map((v) => h('td', null, cellText(v)))))),
         ),
       ),
     );
@@ -621,6 +635,7 @@ async function run() {
     csvBtn.hidden = !rows.length;
     announce(status.textContent);
   } catch (err) {
+    track('sql_failed');
     status.setAttribute('data-tone', 'error');
     status.textContent = String((err as Error).message || err).split('\n')[0];
     runBtn.classList.add('is-refused');
@@ -638,6 +653,7 @@ input.addEventListener('keydown', (e) => {
 });
 csvBtn.addEventListener('click', () => {
   if (!lastRows) return;
+  track('sql_exported');
   const esc = (v: unknown) => `"${String(v ?? '').replaceAll('"', '""')}"`;
   const csv = [lastRows.cols, ...lastRows.rows].map((r) => r.map((v) => esc(typeof v === 'bigint' ? v.toString() : v)).join(',')).join('\r\n');
   const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));

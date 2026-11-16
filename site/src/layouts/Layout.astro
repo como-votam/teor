@@ -13,8 +13,9 @@ import '../styles/global.css';
 import Icon from '../components/Icon.astro';
 import Logo from '../components/Logo.astro';
 import SiteNav from '../components/SiteNav.astro';
-import { staticPages } from '../lib/seo/registry';
-import { runs } from '../data/derived';
+import AnalyticsConsent from '../components/AnalyticsConsent.astro';
+import { staticPages, pages } from '../lib/seo/registry';
+import { runs, itemSummaries } from '../data/derived';
 import { tracks } from '../data';
 import { taskNames } from '../data/labels';
 import { urls, indexable, serializeJson } from '../lib/seo/config';
@@ -67,8 +68,20 @@ const cmdkIndex = {
   tasks: taskNames,
 };
 const year = new Date().getFullYear();
-const umami = import.meta.env.PUBLIC_UMAMI_URL;
-const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
+const analyticsConfig = {
+  projectId: import.meta.env.PUBLIC_CLARITY_PROJECT_ID || '',
+  enabled: import.meta.env.PROD && indexable && import.meta.env.PUBLIC_ANALYTICS_ENABLED === 'true',
+  origin: urls.origin,
+  page: page ? urls.path(page.path) : null,
+  paths: pages.map((p) => urls.path(p.path)),
+  // Values come exclusively from published data, never from the visitor's URL.
+  query: {
+    a: runs.map((r) => r.id), b: runs.map((r) => r.id),
+    ...Object.fromEntries(['track', 'task', 'chamber', 'mode', 'type', 'difficulty', 'item'].map((key) =>
+      [key, [...new Set(itemSummaries.map((item) => String(item[key === 'item' ? 'id' : key as keyof typeof item])))].filter(Boolean)],
+    )),
+  },
+};
 ---
 
 <!doctype html>
@@ -76,6 +89,7 @@ const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="robots" content={robots} />
@@ -141,9 +155,8 @@ const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
     {page && (
       <script is:inline type="application/ld+json" set:html={serializeJson(schemaGraph(page))} />
     )}
-    {umami && umamiId && <script is:inline defer src={umami} data-website-id={umamiId}></script>}
   </head>
-  <body>
+  <body data-clarity-mask="true">
     <a class="skip" href="#conteudo">Ir para o conteúdo</a>
     <header class="site-header">
       <div class="shell header-row">
@@ -239,6 +252,7 @@ const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
           <nav aria-label="Arquivos para máquinas">
             <a href="https://comovotam.com.br/privacidade">Privacidade</a>
             <a href="https://comovotam.com.br/termos">Termos</a>
+            <button type="button" data-analytics-preferences>Preferências de cookies</button>
           </nav>
           <button type="button" data-top>
             <Icon name="arrow-up" weight="regular" size={15} /> Voltar ao topo
@@ -246,8 +260,11 @@ const umamiId = import.meta.env.PUBLIC_UMAMI_WEBSITE_ID;
         </div>
       </div>
     </footer>
+    <AnalyticsConsent />
+    <script type="application/json" id="analytics-config" set:html={serializeJson(analyticsConfig)} />
     <script type="application/json" id="cmdk-index" set:html={serializeJson(cmdkIndex)} />
     <script>
+      import '../scripts/analytics.ts';
       import '../scripts/site.ts';
     </script>
   </body>

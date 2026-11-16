@@ -200,6 +200,8 @@ const sameCohort = new Set(runs.map((r) => `${r.datasetHash}:${r.protocolHash}`)
 </Layout>
 
 <script>
+  import '../../scripts/analytics';
+  import { track } from '../../lib/analytics/events';
   import { $, $$, h, icon } from '../../scripts/ui/core';
   // Busca, filtros, ordenação e paginação sobre as linhas já renderizadas no HTML.
   const root = $('[data-runs]');
@@ -239,6 +241,7 @@ const sameCohort = new Set(runs.map((r) => `${r.datasetHash}:${r.protocolHash}`)
             'aria-label': opts.aria || null,
             disabled: opts.disabled ? true : null,
             onclick: () => {
+              track('runs_page_changed');
               page = to;
               render();
             },
@@ -256,22 +259,26 @@ const sameCohort = new Set(runs.map((r) => `${r.datasetHash}:${r.protocolHash}`)
     search.addEventListener('input', () => {
       clearTimeout(t);
       t = setTimeout(() => {
+        track('runs_search_used');
         q = search.value.trim().toLowerCase();
         page = 0;
         render();
       }, 80);
     });
     $('[data-rt-kind]', root)?.addEventListener('seg', (e) => {
+      track('runs_filter_changed');
       kind = (e as CustomEvent).detail.value;
       page = 0;
       render();
     });
     $('[data-rt-provider]', root)?.addEventListener('select', (e) => {
+      track('runs_filter_changed');
       provider = (e as CustomEvent).detail.value;
       page = 0;
       render();
     });
     $('[data-rt-clear]', root)?.addEventListener('click', () => {
+      track('runs_filters_cleared');
       search.value = '';
       q = '';
       provider = '';
@@ -287,6 +294,7 @@ const sameCohort = new Set(runs.map((r) => `${r.datasetHash}:${r.protocolHash}`)
     buttons.forEach((b) => {
       if (b.dataset.dir) b.closest('th')!.setAttribute('aria-sort', 'descending');
       b.addEventListener('click', () => {
+        track('runs_sorted');
         const key = b.dataset.key!;
         const dir = b.dataset.dir === 'desc' ? 'asc' : 'desc';
         buttons.forEach((x) => {

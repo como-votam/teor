@@ -1,0 +1,27 @@
+<aside class="analytics-consent" data-analytics-consent hidden aria-labelledby="analytics-title" aria-describedby="analytics-description">
+  <h2 id="analytics-title">Sua privacidade no Teor</h2>
+  <p id="analytics-description">Com sua autorização, usamos Microsoft Clarity para medir navegação, cliques e rolagem, gerar mapas de calor e gravar sessões com texto mascarado. A Microsoft recebe dados técnicos, como IP e navegador, e pode processá-los fora do Brasil. Buscas, respostas e SQL não são enviados nos eventos. Recusar não limita o site.</p>
+  <p><a href="https://comovotam.com.br/privacidade">Política de privacidade</a> · <a href="https://www.microsoft.com/pt-br/privacy/privacystatement" rel="noopener noreferrer" target="_blank">Privacidade da Microsoft</a>. Altere sua escolha em Preferências de cookies no rodapé. Sua preferência vale por 180 dias.</p>
+  <p data-analytics-signal hidden>Seu navegador solicita privacidade. A telemetria está desativada.</p>
+  <p data-consent-storage-error hidden role="status">Não foi possível salvar sua preferência. A telemetria continuará desativada.</p>
+  <div class="analytics-consent-actions">
+    <button type="button" data-analytics-choice="denied">Recusar telemetria</button>
+    <button type="button" data-analytics-choice="granted">Aceitar telemetria</button>
+    <button type="button" data-analytics-close hidden>Fechar preferências</button>
+  </div>
+</aside>
+<noscript><p class="shell">A telemetria do Teor depende de JavaScript e de consentimento. Está desativada.</p></noscript>
+
+<style>
+  .analytics-consent { position: fixed; inset: auto 16px 16px; z-index: 1000; margin: auto; max-width: 680px; padding: 24px; background: var(--color-bg-elevated); color: var(--color-ink); border: 1px solid var(--color-border); border-radius: 16px; box-shadow: 0 8px 32px #0002; max-height: calc(100dvh - 32px); overflow: auto; font-family: 'Public Sans', sans-serif; }
+  .analytics-consent[hidden] { display: none; }
+  h2 { font-size: 18px; line-height: 28px; font-weight: 600; text-wrap: balance; margin: 0 0 8px; }
+  p { font-size: 14px; line-height: 20px; margin: 0 0 12px; text-wrap: pretty; }
+  a { text-decoration: underline; }
+  .analytics-consent-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  button { font: inherit; font-size: 16px; line-height: 24px; font-weight: 600; padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-bg-elevated); cursor: pointer; }
+  button:hover { background: var(--color-ghost-hover); }
+  button:active { transform: scale(.98); }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  button:disabled { opacity: .6; cursor: default; }
+</style>

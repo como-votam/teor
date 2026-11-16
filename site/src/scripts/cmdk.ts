@@ -1,3 +1,4 @@
+import { track } from '../lib/analytics/events';
 // ⌘K: páginas, execuções, trilhas e os 500 itens, numa busca só.
 import { h, icon, normalize, readJSON, scrollWithin, type IconName } from './ui/core';
 
@@ -85,6 +86,7 @@ async function loadItems() {
       })),
     );
   } catch {
+    track('search_load_failed');
     itemsLoaded = false;
   }
 }
@@ -99,6 +101,7 @@ function search(q: string) {
 
 export function openPalette() {
   if (root) return;
+  track('search_opened');
   entries ||= base();
   const returnTo = document.activeElement as HTMLElement | null;
   const input = h('input', {
@@ -126,11 +129,15 @@ export function openPalette() {
     ),
   );
   const scrim = h('div', { class: 'cmdk-scrim' });
-  root = h('div', { class: 'cmdk' }, scrim, box);
+  root = h('div', { class: 'cmdk', 'data-clarity-mask': 'true' }, scrim, box);
   document.body.append(root);
   input.focus();
   let active = 0;
   let results: Entry[] = [];
+  let searchTimer: ReturnType<typeof setTimeout>;
+  list.addEventListener('click', (event) => {
+    if ((event.target as Element).closest('a')) track('search_result_opened');
+  });
 
   function render() {
     results = search(input.value);
@@ -168,11 +175,15 @@ export function openPalette() {
     input.setAttribute('aria-activedescendant', `cmdk-${i}`);
   }
   function close() {
+    track('search_closed');
+    clearTimeout(searchTimer);
     root?.remove();
     root = null;
     returnTo?.focus?.();
   }
   input.addEventListener('input', async () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => track('search_used'), 500);
     active = 0;
     render();
     if (input.value.trim().length > 1 && !itemsLoaded) {
@@ -189,6 +200,7 @@ export function openPalette() {
       setActive(Math.max(0, active - 1));
     } else if (e.key === 'Enter' && results[active]) {
       e.preventDefault();
+      track('search_result_opened');
       location.href = results[active].href;
     } else if (e.key === 'Escape') {
       e.preventDefault();

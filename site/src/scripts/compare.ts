@@ -1,4 +1,6 @@
+import { track } from '../lib/analytics/events';
 import { $, h, readJSON, pct, pp } from './ui/core';
+import { protectAnalyticsUrl } from './analytics';
 import { createSelect } from './ui/select';
 import { mountSeen } from './ui/controls';
 import { forestHTML, tipData } from '../lib/charts';
@@ -7,6 +9,7 @@ import type { ClientPayload } from '../data/derived';
 const container = $('[data-compare]');
 if (container) {
   const root = container;
+  track('comparison_opened');
   const p = readJSON<ClientPayload>('payload');
   const COLORS = { a: 'var(--series-1)', b: 'var(--series-2)' };
   const params = new URLSearchParams(location.search);
@@ -32,6 +35,7 @@ if (container) {
   $('[data-pick="b"]', root)!.replaceChildren(pickB.el);
 
   function set(nextA: string, nextB: string) {
+    track('comparison_pair_changed');
     if (nextA === nextB) [nextA, nextB] = [nextB === a ? b : a, nextB];
     if (nextA === nextB) nextB = p.runs.find((r) => r.id !== nextA)!.id;
     a = nextA;
@@ -41,6 +45,7 @@ if (container) {
     const url = new URL(location.href);
     url.searchParams.set('a', a);
     url.searchParams.set('b', b);
+    protectAnalyticsUrl(url);
     history.replaceState(null, '', url);
     render();
   }

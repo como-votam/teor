@@ -1,3 +1,4 @@
+import { track as trackEvent } from '../lib/analytics/events';
 import { $, $$, h, readJSON, swap, reducedMotion, icon, pct } from './ui/core';
 import { openSheet, mountSeen, showTip, hideTip } from './ui/controls';
 import { createSelect } from './ui/select';
@@ -68,6 +69,7 @@ if (hemi) {
             onfocus: () => engine.highlight(i),
             onblur: () => engine.highlight(null),
             onclick: () => {
+              trackEvent('hemicycle_group_opened');
               if (key === 'tracks') location.href = `${base}trilhas/${g.id.toLowerCase()}/`;
               else location.href = `${base}explorador/?${key === 'chambers' ? 'chamber' : 'mode'}=${g.id}`;
             },
@@ -147,6 +149,7 @@ if (hemi) {
     hideTip();
   });
   canvas.addEventListener('click', () => {
+    if (hovered >= 0 && prompts) trackEvent('hemicycle_item_opened');
     if (hovered >= 0 && prompts) location.href = `${base}explorador/?item=${encodeURIComponent(prompts[hovered].id)}`;
   });
 }
@@ -215,6 +218,7 @@ if (matrix && payload) {
                 'aria-label': `Tirar ${r.label} da matriz`,
                 disabled: selected.size <= 1 ? true : null,
                 onclick: () => {
+                  trackEvent('matrix_model_changed');
                   selected.delete(r.id);
                   update();
                 },
@@ -238,6 +242,7 @@ if (matrix && payload) {
             class: 'mx-tab',
             'aria-selected': String(provider === pv),
             onclick: () => {
+              trackEvent('matrix_provider_changed');
               provider = pv;
               drawPicker();
             },
@@ -262,8 +267,9 @@ if (matrix && payload) {
             'data-run': r.id,
             onclick: () => {
               if (full) return;
+              if (on && selected.size <= 1) return;
+              trackEvent('matrix_model_changed');
               if (on) {
-                if (selected.size <= 1) return;
                 selected.delete(r.id);
               } else selected.add(r.id);
               update();
@@ -286,6 +292,7 @@ if (matrix && payload) {
           type: 'button',
           class: 'link',
           onclick: () => {
+            trackEvent('matrix_reset');
             selected = new Set(payload.featured);
             update();
           },
@@ -298,13 +305,19 @@ if (matrix && payload) {
     pop.hidden = !open;
     addBtn.setAttribute('aria-expanded', String(open));
     if (open) {
+      trackEvent('matrix_picker_opened');
       search.value = '';
       drawPicker();
       search.focus({ preventScroll: true });
     }
   };
   addBtn.addEventListener('click', () => setPick(pop.hidden));
-  search.addEventListener('input', drawPicker);
+  let searchTimer: ReturnType<typeof setTimeout>;
+  search.addEventListener('input', () => {
+    drawPicker();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => trackEvent('matrix_search_used'), 500);
+  });
   document.addEventListener('pointerdown', (e) => {
     if (!pickWrap.contains(e.target as Node)) setPick(false);
   });
@@ -320,6 +333,7 @@ if (matrix && payload) {
     value: '',
     options: [{ value: '', label: 'Todas' }, ...payload.tracks.map(([id, name]) => ({ value: id, label: `${id} · ${name}` }))],
     onChange: (v) => {
+      trackEvent('matrix_track_changed');
       track = v;
       applyRows();
     },
@@ -354,6 +368,7 @@ if (matrix && payload) {
   });
 
   $('[data-export]')?.addEventListener('click', () => {
+    trackEvent('matrix_exported');
     const cell = (v: unknown) => {
       const s = String(v ?? '');
       return `"${(/^[=+@-]/.test(s) ? "'" + s : s).replaceAll('"', '""')}"`;
@@ -374,6 +389,7 @@ if (matrix && payload) {
 }
 
 function openSlice(key: string) {
+  trackEvent('matrix_slice_opened');
   const s = payload.slices.find((x) => x.key === key);
   if (!s) return;
   const track = payload.tracks.find((t) => t[0] === s.track)!;
@@ -446,6 +462,7 @@ const composition = $('[data-composition]');
 function selectTrack(id: string, focus = false) {
   const t = tracks.find((x) => x.id === id);
   if (!t || !detail) return;
+  trackEvent('track_selected');
   tabs.forEach((tab) => {
     const on = tab.dataset.track === id;
     tab.setAttribute('aria-selected', String(on));
@@ -500,6 +517,7 @@ function selectStep(i: number, focus = false) {
     if (i === j && focus) s.focus();
   });
   if (i === currentStep && term.childElementCount) return;
+  trackEvent('pipeline_step_selected');
   currentStep = i;
   const code = h('code');
   for (const [k, line] of p.code) code.append(h('span', { class: k }, `${k === 'p' ? '$ ' : ''}${line}\n`));

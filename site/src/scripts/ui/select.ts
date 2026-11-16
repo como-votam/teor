@@ -1,3 +1,4 @@
+import { track } from '../../lib/analytics/events';
 // Select próprio: botão + listbox (padrão WAI-ARIA "select-only combobox"), com busca opcional.
 // Nada de <select> nativo: o popover, o realce e o check são nossos, e o teclado faz tudo.
 import { h, icon, normalize, scrollWithin } from './core';
@@ -159,6 +160,7 @@ export function createSelect(config: SelectConfig) {
 
   function openPop() {
     if (!pop.hidden) return;
+    track('select_opened');
     open.forEach((fn) => fn());
     searchInput.value = '';
     render();
@@ -236,7 +238,10 @@ export function createSelect(config: SelectConfig) {
   trigger.addEventListener('click', () => (pop.hidden ? openPop() : close()));
   trigger.addEventListener('keydown', onKey);
   searchInput.addEventListener('keydown', onKey);
+  let analyticsSearchTimer: ReturnType<typeof setTimeout>;
   searchInput.addEventListener('input', () => {
+    clearTimeout(analyticsSearchTimer);
+    analyticsSearchTimer = setTimeout(() => track('select_search_used'), 500);
     render();
     setActive(0);
   });
