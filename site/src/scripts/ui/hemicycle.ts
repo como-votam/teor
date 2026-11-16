@@ -1,15 +1,10 @@
 // Hemiciclo em canvas, no desenho do Como Votam (congresso-hemicycle.tsx): uma matriz uniforme de
-// assentos em arcos concêntricos que nunca se mexe. Cada assento é um item do benchmark. Trocar de
+// assentos em arcos concêntricos. A quantidade de pontos depende da tela, não do dataset. Trocar de
 // arranjo recolore os assentos com uma varredura da esquerda para a direita: cada grupo ocupa uma
 // faixa contígua do arco, como as bancadas num plenário.
 
-const OUTER = 220;
-const INNER = 92;
-const SEAT_R = 3.5;
-const PAD = 4;
-const CENTER = OUTER + SEAT_R + PAD;
-export const VIEW_W = 2 * (OUTER + SEAT_R + PAD);
-export const VIEW_H = OUTER + 2 * SEAT_R + 2 * PAD;
+import { CENTER, SEAT_R, VIEW_W, seatBudget, seatMatrix, sampleSeats, type SeatSample } from './hemicycle-model';
+export { VIEW_W, VIEW_H } from './hemicycle-model';
 
 const ENTRY_MS = 640;
 const ENTRY_FEATHER = 22;
@@ -30,33 +25,6 @@ export function tone(g: number, groups: number): Rgb {
 }
 export const toneCss = (g: number, groups: number) => `rgb(${tone(g, groups).map((v) => Math.round(v)).join(',')})`;
 
-interface Seat {
-  x: number;
-  y: number;
-  row: number;
-  angle: number;
-}
-
-/** Matriz de pontos com passo igual ao longo e através dos arcos (mesma conta do Como Votam). */
-function seatMatrix(total: number): Seat[] {
-  const pitch = Math.sqrt(((Math.PI / 2) * (OUTER ** 2 - INNER ** 2)) / total);
-  const rows = Math.max(2, Math.round((OUTER - INNER) / pitch) + 1);
-  const radii = Array.from({ length: rows }, (_, i) => INNER + (i * (OUTER - INNER)) / (rows - 1));
-  const sum = radii.reduce((a, b) => a + b, 0);
-  const counts = radii.map((r) => Math.max(1, Math.round((total * r) / sum)));
-  counts[rows - 1] = Math.max(1, counts[rows - 1] + total - counts.reduce((a, b) => a + b, 0));
-  const seats: Seat[] = [];
-  counts.forEach((count, row) => {
-    for (let i = 0; i < count; i++) {
-      const angle = count === 1 ? 90 : 180 - (i / (count - 1)) * 180;
-      const rad = (angle * Math.PI) / 180;
-      seats.push({ x: Math.cos(rad) * radii[row], y: -Math.sin(rad) * radii[row], row, angle });
-    }
-  });
-  // Ordem de leitura do plenário: da esquerda para a direita, de dentro para fora em cada coluna.
-  return seats.sort((a, b) => b.angle - a.angle || a.row - b.row);
-}
-
 export interface Mode {
   key: string;
   /** Grupo de cada item (índice em `groups`). */
@@ -69,41 +37,46 @@ export interface Mode {
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const easeOut = (t: number) => 1 - (1 - t) ** 3;
 
-export function createHemicycle(canvas: HTMLCanvasElement, count: number) {
+export function createHemicycle(canvas: HTMLCanvasElement, count: number, onLayout?: (points: number) => void) {
   const ctx = canvas.getContext('2d');
   if (!ctx || !count) return null;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const seats = seatMatrix(count);
-  const rows = Math.max(1, ...seats.map((s) => s.row));
+  let cssWidth = canvas.getBoundingClientRect().width;
+  let seats = seatMatrix(Math.min(count, seatBudget(cssWidth)));
+  let rows = Math.max(1, ...seats.map((s) => s.row));
   // Atraso de cada assento na varredura: proporcional à posição no arco, da esquerda para a direita.
-  const sweep = Float32Array.from(seats, (s) => (180 - s.angle) / 180);
+  let sweep = Float32Array.from(seats, (s) => (180 - s.angle) / 180);
 
   let mode: Mode | null = null;
   let highlight: number | null = null;
-  let itemAt = new Int32Array(count); // assento → item
-  let seatOf = new Int32Array(count); // item → assento
-  let groupAt = new Int32Array(count); // assento → grupo
-  const cur = new Float32Array(count * 3);
-  let from = new Float32Array(count * 3);
-  let target = new Float32Array(count * 3);
+  let samples: SeatSample[] = [];
+  let seatOf = new Map<number, number>();
+  let cur = new Float32Array(seats.length * 3);
+  let from = new Float32Array(seats.length * 3);
+  let target = new Float32Array(seats.length * 3);
+  // Reuse at most the four arrangements at the current screen density.
+  const cache = new Map<Mode, SeatSample[]>();
   let recolorStart = -Infinity;
   let spread = RECOLOR_SPREAD;
   let entryStart = performance.now();
   let started = false;
   let raf = 0;
+  let visible = false;
 
   /** Grupos em sequência pelo arco: o grupo 0 nos primeiros assentos, o 1 nos seguintes, e assim por diante. */
   function assign(m: Mode) {
-    const order = Array.from({ length: count }, (_, i) => i).sort((a, b) => m.groupOf[a] - m.groupOf[b] || a - b);
-    itemAt = Int32Array.from(order);
-    seatOf = new Int32Array(count);
-    order.forEach((item, seat) => (seatOf[item] = seat));
-    groupAt = Int32Array.from(order, (item) => m.groupOf[item]);
+    let next = cache.get(m);
+    if (!next) {
+      next = sampleSeats(m.groupOf, m.groups, seats.length);
+      cache.set(m, next);
+    }
+    samples = next;
+    seatOf = new Map(samples.map((sample, seat) => [sample.item, seat]));
   }
   function colors(m: Mode) {
-    const out = new Float32Array(count * 3);
-    for (let s = 0; s < count; s++) {
-      const g = groupAt[s];
+    const out = new Float32Array(seats.length * 3);
+    for (let s = 0; s < seats.length; s++) {
+      const g = samples[s].group;
       let rgb = m.depth ? mix(NAVY, MIST, (seats[s].row / rows) * 0.34) : tone(g, m.groups);
       if (highlight !== null && g !== highlight) rgb = mix(rgb, PAPER, 0.8);
       out.set(rgb, s * 3);
@@ -112,6 +85,7 @@ export function createHemicycle(canvas: HTMLCanvasElement, count: number) {
   }
 
   function draw(now: number) {
+    if (!started || !visible || !mode) return false;
     const k = canvas.width / VIEW_W;
     ctx!.setTransform(1, 0, 0, 1, 0, 0);
     ctx!.clearRect(0, 0, canvas.width, canvas.height);
@@ -119,7 +93,7 @@ export function createHemicycle(canvas: HTMLCanvasElement, count: number) {
     const entry = reduce || !started ? (started ? 1 : 0) : clamp01((now - entryStart) / ENTRY_MS);
     const reach = easeOut(entry) * (180 + ENTRY_FEATHER);
     let moving = entry < 1;
-    for (let s = 0; s < count; s++) {
+    for (let s = 0; s < seats.length; s++) {
       const alpha = clamp01((reach - sweep[s] * 180) / ENTRY_FEATHER);
       if (alpha <= 0) continue;
       const t = reduce ? 1 : clamp01((now - recolorStart - sweep[s] * spread) / RECOLOR_MS);
@@ -145,13 +119,24 @@ export function createHemicycle(canvas: HTMLCanvasElement, count: number) {
     if (draw(now)) raf = requestAnimationFrame(frame);
   }
   const schedule = () => {
-    if (!raf) raf = requestAnimationFrame(frame);
+    if (started && visible && !raf) raf = requestAnimationFrame(frame);
   };
   function resize() {
     const r = canvas.getBoundingClientRect();
+    cssWidth = r.width;
+    const size = Math.min(count, seatBudget(cssWidth));
+    if (size !== seats.length) {
+      seats = seatMatrix(size);
+      rows = Math.max(1, ...seats.map((s) => s.row));
+      sweep = Float32Array.from(seats, (s) => (180 - s.angle) / 180);
+      cur = new Float32Array(size * 3);
+      cache.clear();
+      if (mode) { assign(mode); recolor(true); }
+    }
     const dpr = Math.min(devicePixelRatio || 1, 2);
     canvas.width = Math.max(1, Math.round(r.width * dpr));
     canvas.height = Math.max(1, Math.round(r.height * dpr));
+    onLayout?.(seats.length);
     schedule();
   }
   new ResizeObserver(resize).observe(canvas);
@@ -174,16 +159,30 @@ export function createHemicycle(canvas: HTMLCanvasElement, count: number) {
       highlight = null;
       assign(next);
       recolor(first);
+      onLayout?.(seats.length);
     },
     /** Começa a varredura de entrada (quando o hemiciclo aparece na tela). */
     start() {
-      if (started) return;
-      started = true;
-      entryStart = performance.now();
+      visible = true;
+      if (!started) { started = true; entryStart = performance.now(); }
       schedule();
     },
+    /** Pause outside the viewport and in background tabs. Resume without replaying entry. */
+    setVisible(next: boolean) {
+      visible = next;
+      if (!visible) { cancelAnimationFrame(raf); raf = 0; }
+      else {
+        if (!started) { started = true; entryStart = performance.now(); }
+        schedule();
+      }
+    },
+    /** Number of questions represented by the point that opens this example. */
+    represented(item: number) {
+      const seat = seatOf.get(item);
+      return seat === undefined ? 0 : samples[seat].weight;
+    },
     highlight(group: number | null) {
-      if (group === highlight) return;
+      if (!mode || group === highlight) return;
       highlight = group;
       // Destaque é resposta direta ao ponteiro: sem varredura, só uma transição curta e igual para todos.
       target = colors(mode!);
@@ -194,26 +193,27 @@ export function createHemicycle(canvas: HTMLCanvasElement, count: number) {
     },
     /** Item sob um ponto do canvas (px CSS), ou -1. */
     hit(x: number, y: number) {
-      const r = canvas.getBoundingClientRect();
-      const k = r.width / VIEW_W;
+      if (!cssWidth) return -1;
+      const k = cssWidth / VIEW_W;
       const vx = x / k - CENTER;
       const vy = y / k - CENTER;
       let best = -1;
       let dist = (SEAT_R * 2.4) ** 2;
-      for (let s = 0; s < count; s++) {
+      for (let s = 0; s < seats.length; s++) {
         const d = (seats[s].x - vx) ** 2 + (seats[s].y - vy) ** 2;
         if (d < dist) {
           dist = d;
           best = s;
         }
       }
-      return best < 0 ? -1 : itemAt[best];
+      return best < 0 ? -1 : samples[best].item;
     },
     /** Posição de um item em px CSS dentro do canvas. */
     at(item: number) {
-      const r = canvas.getBoundingClientRect();
-      const k = r.width / VIEW_W;
-      const s = seats[seatOf[item]];
+      const k = cssWidth / VIEW_W;
+      const index = seatOf.get(item);
+      if (index === undefined) return null;
+      const s = seats[index];
       return { x: (CENTER + s.x) * k, y: (CENTER + s.y) * k };
     },
   };

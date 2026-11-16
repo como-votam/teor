@@ -29,14 +29,34 @@ if (hemi) {
   const data = readJSON<HemiData>('hemi-data');
   const canvas = $<HTMLCanvasElement>('[data-hemi-canvas]', hemi)!;
   canvas.style.aspectRatio = `${VIEW_W} / ${VIEW_H}`;
-  const engine = createHemicycle(canvas, data.items.length);
   const valueEl = $('[data-hemi-value]', hemi)!;
   const captionEl = $('[data-hemi-caption]', hemi)!;
   const legend = $('[data-hemi-legend]', hemi)!;
   const probe = $('[data-hemi-probe]', hemi)!;
   const total = data.items.length.toLocaleString('pt-BR');
+  const hint = $('[data-hemi-hint]', hemi)!;
+  let hovered = -1;
+  let pointerFrame = 0;
+  let pointerX = 0;
+  let pointerY = 0;
+  const clearHover = () => {
+    cancelAnimationFrame(pointerFrame);
+    pointerFrame = 0;
+    hovered = -1;
+    canvas.style.cursor = '';
+    hideTip();
+  };
+  const engine = createHemicycle(canvas, data.items.length, (points) => {
+    clearHover();
+    const aggregated = points < data.items.length;
+    const displayed = points.toLocaleString('pt-BR');
+    hint.textContent = aggregated
+      ? `${displayed} pontos representam ${total} perguntas. Passe o mouse para ver um exemplo; clique para abrir.`
+      : 'Cada ponto representa uma pergunta. Passe o mouse para ler; clique para abrir.';
+    canvas.setAttribute('aria-label', `Hemiciclo com ${total} perguntas representadas por ${displayed} pontos, agrupados proporcionalmente por trilha, casa ou modo. Os totais exatos estão nas legendas.`);
+  });
   const modes: Record<string, { mode: Mode; value: string; caption: string; groups: Group[] }> = {
-    items: { mode: { key: 'items', groupOf: data.items.map(() => 0), groups: 1, depth: true }, value: total, caption: 'perguntas, uma por assento', groups: [] },
+    items: { mode: { key: 'items', groupOf: data.items.map(() => 0), groups: 1, depth: true }, value: total, caption: 'perguntas no benchmark', groups: [] },
     tracks: { mode: { key: 'tracks', groupOf: data.items.map((i) => i[0]), groups: data.tracks.length }, value: String(data.tracks.length), caption: 'trilhas, uma capacidade em cada', groups: data.tracks },
     chambers: {
       mode: { key: 'chambers', groupOf: data.items.map((i) => i[1]), groups: data.chambers.length },
@@ -52,6 +72,7 @@ if (hemi) {
   const setMode = (key: string) => {
     const m = modes[key];
     if (!m || !engine) return;
+    clearHover();
     current = key;
     engine.setMode(m.mode);
     valueEl.textContent = m.value;
@@ -95,62 +116,90 @@ if (hemi) {
     if (touched || hovering || !visible || document.hidden) return;
     setMode(order[(order.indexOf(current) + 1) % order.length]);
   };
+  const syncActivity = () => {
+    engine?.setVisible(visible && !document.hidden);
+    const cycleEnabled = visible && !document.hidden && !touched && !hovering && !reducedMotion();
+    if (!cycleEnabled && timer) { clearInterval(timer); timer = undefined; }
+    if (cycleEnabled && !timer) timer = setInterval(cycle, 3800);
+    if (!visible || document.hidden) clearHover();
+  };
   new IntersectionObserver(([e]) => {
     visible = e.isIntersecting;
-    if (visible) engine?.start();
-    if (visible && !timer && !reducedMotion()) timer = setInterval(cycle, 3800);
+    syncActivity();
   }).observe(canvas);
-  hemi.addEventListener('pointerenter', () => (hovering = true));
-  hemi.addEventListener('pointerleave', () => (hovering = false));
+  document.addEventListener('visibilitychange', syncActivity);
+  hemi.addEventListener('pointerenter', () => { hovering = true; syncActivity(); });
+  hemi.addEventListener('pointerleave', () => { hovering = false; syncActivity(); });
   $('[data-hemi-mode]', hemi)?.addEventListener('seg', (e) => {
     touched = true;
+    syncActivity();
     setMode((e as CustomEvent).detail.value);
   });
 
-  // Hover num ponto: a pergunta real daquele assento. O índice de textos chega sob demanda.
-  let prompts: { id: string; track: string; task: string; chamber: string; mode: string; prompt: string }[] | null = null;
-  let loading = false;
-  let hovered = -1;
-  const load = () => {
-    if (prompts || loading) return;
-    loading = true;
-    fetch(`${base}itens/index.json`)
-      .then((r) => r.json())
-      .then((list) => (prompts = list))
-      .catch(() => (loading = false));
+  // A point represents a bucket in the active group and opens one real example.
+  type Prompt = { id: string; track: string; task: string; chamber: string; mode: string; prompt: string };
+  let prompts: Prompt[] | null = null;
+  let loading: Promise<Prompt[] | null> | null = null;
+  const load = (): Promise<Prompt[] | null> => {
+    if (prompts) return Promise.resolve(prompts);
+    if (loading) return loading;
+    loading = fetch(`${base}itens/index.json`)
+      .then((r) => { if (!r.ok) throw new Error('Índice indisponível'); return r.json(); })
+      .then((list: Prompt[]) => (prompts = list))
+      .catch(() => { loading = null; return null; });
+    return loading;
   };
-  canvas.addEventListener('pointermove', (e) => {
-    load();
+  const showPoint = (x: number, y: number) => {
     if (!engine || !prompts) return;
     const r = canvas.getBoundingClientRect();
-    const i = engine.hit(e.clientX - r.left, e.clientY - r.top);
+    const i = engine.hit(x - r.left, y - r.top);
     canvas.style.cursor = i >= 0 ? 'pointer' : '';
     if (i === hovered) return;
     hovered = i;
     if (i < 0) return hideTip();
     const item = prompts[i];
     const at = engine.at(i);
+    if (!item || !at) return hideTip();
+    const weight = engine.represented(i);
     probe.style.left = `${at.x}px`;
     probe.style.top = `${at.y}px`;
     probe.setAttribute(
       'data-tip',
       tipData(
         `${item.track} · ${data.taskNames[item.task] || item.task} · ${data.chamberNames[item.chamber] || item.chamber}`,
-        '',
+        weight > 1 ? `${weight.toLocaleString('pt-BR')} perguntas neste ponto` : '',
         [],
-        item.prompt.length > 180 ? `${item.prompt.slice(0, 177)}…` : item.prompt,
+        `${weight > 1 ? 'Exemplo: ' : ''}${item.prompt.length > 180 ? `${item.prompt.slice(0, 177)}…` : item.prompt}`,
       ),
     );
     showTip(probe);
+  };
+  canvas.addEventListener('pointermove', (e) => {
+    // Coalesce pointer events; hit testing visits only the bounded visible points.
+    pointerX = e.clientX;
+    pointerY = e.clientY;
+    if (!pointerFrame) {
+      pointerFrame = requestAnimationFrame(() => {
+        pointerFrame = 0;
+        showPoint(pointerX, pointerY);
+      });
+    }
+    if (!prompts && !loading) {
+      void load().then(() => {
+        if (hovering) showPoint(pointerX, pointerY);
+      });
+    }
   });
-  canvas.addEventListener('pointerleave', () => {
-    hovered = -1;
-    canvas.style.cursor = '';
-    hideTip();
-  });
-  canvas.addEventListener('click', () => {
-    if (hovered >= 0 && prompts) trackEvent('hemicycle_item_opened');
-    if (hovered >= 0 && prompts) location.href = `${base}explorador/?item=${encodeURIComponent(prompts[hovered].id)}`;
+  canvas.addEventListener('pointerleave', clearHover);
+  canvas.addEventListener('click', async (e) => {
+    if (!engine) return;
+    const r = canvas.getBoundingClientRect();
+    const i = engine.hit(e.clientX - r.left, e.clientY - r.top);
+    if (i < 0) return;
+    const list = await load();
+    if (!list?.[i]) return;
+    trackEvent('hemicycle_item_opened');
+    location.href = `${base}explorador/?item=${encodeURIComponent(list[i].id)}`;
   });
 }
 

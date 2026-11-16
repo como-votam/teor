@@ -19,7 +19,7 @@ import { seqColor, liftColor, pct, pp, int } from '../lib/format';
 import { tipData, seriesColor } from '../lib/charts';
 const base = import.meta.env.BASE_URL;
 
-// Hemiciclo do hero: cada item é um ponto, com o grupo dele em cada arranjo.
+// Hemiciclo do hero: totais completos; o canvas agrega pontos conforme o espaço disponível.
 const trackIds = tracks.map((t) => t[0]);
 const chamberIds = ['camara', 'senado'];
 const modeIds = ['with_context', 'closed_book', 'tools'];
@@ -150,12 +150,12 @@ const firstTrack = trackPayload[0];
           <canvas
             data-hemi-canvas
             role="img"
-            aria-label={`Hemiciclo com ${int(totalItems)} pontos, um por pergunta do benchmark, agrupados por trilha, casa ou modo.`}
+            aria-label={`Hemiciclo representando ${int(totalItems)} perguntas do benchmark. Os pontos podem agrupar perguntas, mantendo as proporções por trilha, casa ou modo.`}
           />
           <span class="hemi-probe" data-hemi-probe aria-hidden="true" />
           <div class="hemi-figure" aria-live="polite">
             <p class="hemi-value" data-hemi-value>{int(totalItems)}</p>
-            <p class="hemi-caption" data-hemi-caption>perguntas, uma por assento</p>
+            <p class="hemi-caption" data-hemi-caption>perguntas no benchmark</p>
           </div>
         </div>
         <figcaption class="hemi-controls">
@@ -167,7 +167,7 @@ const firstTrack = trackPayload[0];
             ))}
           </div>
           <div class="hemi-legend" data-hemi-legend />
-          <p class="fine hemi-hint">Passe o mouse num ponto para ler a pergunta; clique para abrir.</p>
+          <p class="fine hemi-hint" data-hemi-hint>Os pontos podem agrupar perguntas. Passe o mouse para ver um exemplo; clique para abrir.</p>
         </figcaption>
         <script type="application/json" id="hemi-data" set:html={serializeJson(hemiData)} />
       </figure>
